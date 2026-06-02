@@ -41,7 +41,9 @@ cursor.executescript("""
     role TEXT,
     conteudo TEXT,
     data_hora DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+    );
+    CREATE TABLE IF NOT EXISTS usuarios ()               
+    );
                      """)
 
 # Dados de teste
