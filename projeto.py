@@ -384,7 +384,7 @@ def relatorio_geral():
         notas = cursor.fetchall()
         
         if notas:
-            texto_sigma += "  📄 Notas:\n"
+            texto_sigma += " 📄 Notas:\n"
             for materia, nota in notas:
                 texto_sigma += f"     - {materia}: {nota}\n"
         else:

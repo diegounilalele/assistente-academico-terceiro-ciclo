@@ -216,16 +216,482 @@
       overflow: hidden;
     }
 
+    /* ── PAGE VIEWS (shared) ── */
+    .page-view {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      padding: 40px 48px;
+      animation: fadeIn 0.25s ease;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .page-view::-webkit-scrollbar { width: 4px; }
+    .page-view::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .page-view.visible { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .page-header {
+      margin-bottom: 32px;
+    }
+    .page-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .page-header p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ── GRID CARDS ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .stat-card .card-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .stat-card .card-value {
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1;
+    }
+    .stat-card .card-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+    .stat-card .card-icon {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    /* ── TABLE ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      font-weight: 400;
+    }
+    .data-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(30,31,33,0.6);
+      color: var(--text);
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(19,20,21,0.5); }
+
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .table-title {
+      padding: 16px 18px 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    /* ── BADGE STATUS ── */
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11.5px;
+    }
+    .badge-status.ok   { background: rgba(74,222,128,0.08); color: #4ade80; }
+    .badge-status.warn { background: rgba(251,191,36,0.08); color: #fbbf24; }
+    .badge-status.bad  { background: rgba(248,113,113,0.08); color: #f87171; }
+    .badge-status::before { content: '●'; font-size: 8px; }
+
+    /* ── PROGRESS BAR ── */
+    .progress-bar {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.6s ease;
+    }
+    .progress-bar-fill.bad { background: linear-gradient(90deg, #f87171, #ef4444); }
+
+    /* ── CALENDAR ── */
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .cal-day-name {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 8px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+    }
+    .cal-day:hover { background: var(--surface2); color: var(--text); }
+    .cal-day.today {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      font-weight: 500;
+    }
+    .cal-day.has-event::after {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: #fbbf24;
+    }
+    .cal-day.empty { cursor: default; }
+    .cal-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .cal-header h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      color: var(--text);
+    }
+    .cal-nav {
+      display: flex;
+      gap: 8px;
+    }
+    .cal-nav button {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 8px;
+      width: 30px; height: 30px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+    .cal-nav button:hover { color: var(--text); background: var(--border); }
+
+    .events-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .event-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .event-date-box {
+      text-align: center;
+      min-width: 40px;
+    }
+    .event-date-box .day { font-size: 20px; font-weight: 500; color: var(--text); line-height: 1; }
+    .event-date-box .month { font-size: 10px; text-transform: uppercase; color: var(--text-muted); }
+    .event-info { flex: 1; }
+    .event-info .title { font-size: 13.5px; color: var(--text); }
+    .event-info .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .event-tag {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(74,85,104,0.15);
+      color: var(--accent2);
+      border: 1px solid rgba(74,85,104,0.2);
+    }
+
+    /* ── NOTAS ── */
+    .notas-layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 16px;
+      height: calc(100vh - 160px);
+    }
+    .notas-sidebar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .notas-sidebar-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .notas-sidebar-header span {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .btn-new-nota {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 7px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: color 0.15s, background 0.15s;
+    }
+    .btn-new-nota:hover { color: var(--text); background: var(--border); }
+    .notas-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .nota-list-item {
+      padding: 10px 12px;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 2px;
+    }
+    .nota-list-item:hover { background: var(--surface2); }
+    .nota-list-item.active { background: var(--surface2); }
+    .nota-list-item .nota-title-small { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nota-list-item .nota-preview { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .nota-list-item .nota-date { font-size: 10.5px; color: var(--text-muted); margin-top: 4px; }
+
+    .nota-editor {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .nota-editor-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .nota-editor-header input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      width: 100%;
+    }
+    .nota-editor-header input::placeholder { color: var(--text-muted); }
+    .nota-editor-body {
+      flex: 1;
+      padding: 20px;
+    }
+    .nota-editor-body textarea {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+      resize: none;
+    }
+    .nota-editor-body textarea::placeholder { color: var(--text-muted); }
+    .nota-editor-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .btn-save {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: white;
+      border-radius: 8px;
+      padding: 7px 18px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: opacity 0.2s;
+    }
+    .btn-save:hover { opacity: 0.85; }
+    .btn-delete-nota {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-delete-nota:hover { color: #f87171; border-color: #f87171; }
+    .nota-empty-state {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* ── CONFIGURAÇÕES ── */
+    .config-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .config-section-title {
+      padding: 14px 18px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .config-row {
+      display: flex;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(30,31,33,0.5);
+      gap: 14px;
+    }
+    .config-row:last-child { border-bottom: none; }
+    .config-row-label { flex: 1; font-size: 13.5px; color: var(--text); }
+    .config-row-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .config-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+      min-width: 180px;
+    }
+    .config-input:focus { border-color: var(--accent); }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 22px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle input:checked + .toggle-track { background: var(--accent); }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      left: 3px; top: 3px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: white;
+      transition: left 0.2s;
+    }
+    .toggle input:checked + .toggle-track::after { left: 21px; }
+    .btn-config-save {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: white;
+      border-radius: 10px;
+      padding: 10px 24px;
+      font-size: 13.5px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: opacity 0.2s;
+    }
+    .btn-config-save:hover { opacity: 0.85; }
+
     /* ── HOME VIEW ── */
     .home-view {
       flex: 1;
-      display: flex;
+      display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 40px 20px 20px;
       gap: 32px;
     }
+    .home-view.visible { display: flex; }
 
     .home-title {
       font-family: 'Playfair Display', serif;
@@ -436,19 +902,19 @@
 
   <div class="sidebar-section">
     <p class="sidebar-section-title">Menu</p>
-    <div class="sidebar-item active" onclick="voltarHome()">
+    <div class="sidebar-item active" id="nav-assistente" onclick="showView('assistente')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       Assistente
     </div>
-    <div class="sidebar-item">
+    <div class="sidebar-item" id="nav-inicio" onclick="showView('inicio')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Início
     </div>
-    <div class="sidebar-item">
+    <div class="sidebar-item" id="nav-calendario" onclick="showView('calendario')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       Calendário
     </div>
-    <div class="sidebar-item">
+    <div class="sidebar-item" id="nav-notas" onclick="showView('notas')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       Notas
     </div>
@@ -456,15 +922,15 @@
 
   <div class="sidebar-section">
     <p class="sidebar-section-title">Acadêmico</p>
-    <div class="sidebar-item">
+    <div class="sidebar-item" id="nav-desempenho" onclick="showView('desempenho')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       Desempenho
     </div>
-    <div class="sidebar-item">
+    <div class="sidebar-item" id="nav-frequencia" onclick="showView('frequencia')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Frequência
     </div>
-    <div class="sidebar-item">
+    <div class="sidebar-item" id="nav-disciplinas" onclick="showView('disciplinas')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       Disciplinas
     </div>
@@ -479,14 +945,14 @@
   </div>
 
   <div class="sidebar-bottom">
-    <div class="sidebar-item">
+    <div class="sidebar-item" id="nav-configuracoes" onclick="showView('configuracoes')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
       Configurações
     </div>
     <div class="sidebar-user">
       <div class="user-avatar">👤</div>
       <div class="user-info">
-        <div class="user-name">Usuário</div>
+        <div class="user-name" id="display-name">Usuário</div>
         <div class="user-role">Estudante</div>
       </div>
     </div>
@@ -496,10 +962,9 @@
 <!-- MAIN -->
 <main class="main">
 
-  <!-- HOME -->
-  <div class="home-view" id="home-view">
+  <!-- ── ASSISTENTE (HOME + CHAT) ── -->
+  <div class="home-view visible" id="home-view">
     <h1 class="home-title">O que você precisa estudar hoje?</h1>
-
     <div class="home-input-wrap">
       <div class="home-input-bar">
         <textarea
@@ -516,14 +981,11 @@
           </svg>
         </button>
       </div>
-      </div>
     </div>
   </div>
 
-  <!-- CHAT -->
   <div class="chat-view" id="chat-view">
     <div class="messages" id="messages"></div>
-
     <div class="chat-input-area">
       <div class="chat-input-bar">
         <textarea
@@ -544,9 +1006,560 @@
     </div>
   </div>
 
+  <!-- ── INÍCIO ── -->
+  <div class="page-view" id="view-inicio">
+    <div class="page-header">
+      <h2>Início</h2>
+      <p>Resumo do seu desempenho acadêmico</p>
+    </div>
+    <div class="cards-grid">
+      <div class="stat-card">
+        <div class="card-icon">📊</div>
+        <div class="card-label">Média Geral</div>
+        <div class="card-value">7.4</div>
+        <div class="card-sub">↑ +0.3 este mês</div>
+      </div>
+      <div class="stat-card">
+        <div class="card-icon">✅</div>
+        <div class="card-label">Frequência</div>
+        <div class="card-value">84%</div>
+        <div class="card-sub">↓ 2 faltas esta semana</div>
+      </div>
+      <div class="stat-card">
+        <div class="card-icon">📅</div>
+        <div class="card-label">Próxima Prova</div>
+        <div class="card-value" style="font-size:18px;">10 Jun</div>
+        <div class="card-sub">Cálculo II</div>
+      </div>
+      <div class="stat-card">
+        <div class="card-icon">📚</div>
+        <div class="card-label">Disciplinas</div>
+        <div class="card-value">6</div>
+        <div class="card-sub">2 com atenção necessária</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-title">Situação por Disciplina</div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Disciplina</th>
+            <th>Média</th>
+            <th>Frequência</th>
+            <th>Situação</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Algoritmos</td><td>8.5</td><td>90%</td><td><span class="badge-status ok">Aprovado</span></td></tr>
+          <tr><td>Cálculo II</td><td>5.2</td><td>80%</td><td><span class="badge-status warn">Atenção</span></td></tr>
+          <tr><td>Banco de Dados</td><td>9.0</td><td>95%</td><td><span class="badge-status ok">Aprovado</span></td></tr>
+          <tr><td>Eng. de Software</td><td>7.8</td><td>85%</td><td><span class="badge-status ok">Aprovado</span></td></tr>
+          <tr><td>Redes</td><td>4.5</td><td>72%</td><td><span class="badge-status bad">Reprovando</span></td></tr>
+          <tr><td>P.O.O.</td><td>8.1</td><td>88%</td><td><span class="badge-status ok">Aprovado</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── CALENDÁRIO ── -->
+  <div class="page-view" id="view-calendario">
+    <div class="page-header">
+      <h2>Calendário</h2>
+      <p>Provas, trabalhos e eventos acadêmicos</p>
+    </div>
+    <div class="cal-wrap">
+      <div class="cal-header">
+        <h3 id="cal-month-label">Junho 2026</h3>
+        <div class="cal-nav">
+          <button onclick="calNav(-1)">‹</button>
+          <button onclick="calNav(1)">›</button>
+        </div>
+      </div>
+      <div class="calendar-grid" id="cal-grid"></div>
+    </div>
+    <div class="page-header" style="margin-bottom:16px;">
+      <h2 style="font-size:16px;">Próximos Eventos</h2>
+    </div>
+    <div class="events-list">
+      <div class="event-item">
+        <div class="event-date-box"><div class="day">10</div><div class="month">Jun</div></div>
+        <div class="event-info"><div class="title">Prova — Cálculo II</div><div class="sub">Sala 204 · 08h00</div></div>
+        <span class="event-tag">Prova</span>
+      </div>
+      <div class="event-item">
+        <div class="event-date-box"><div class="day">13</div><div class="month">Jun</div></div>
+        <div class="event-info"><div class="title">Entrega — Projeto de Redes</div><div class="sub">Via portal acadêmico · 23h59</div></div>
+        <span class="event-tag">Trabalho</span>
+      </div>
+      <div class="event-item">
+        <div class="event-date-box"><div class="day">18</div><div class="month">Jun</div></div>
+        <div class="event-info"><div class="title">Prova — Banco de Dados</div><div class="sub">Sala 101 · 10h00</div></div>
+        <span class="event-tag">Prova</span>
+      </div>
+      <div class="event-item">
+        <div class="event-date-box"><div class="day">25</div><div class="month">Jun</div></div>
+        <div class="event-info"><div class="title">Apresentação — Eng. de Software</div><div class="sub">Auditório · 14h00</div></div>
+        <span class="event-tag">Apresentação</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── NOTAS ── -->
+  <div class="page-view" id="view-notas">
+    <div class="page-header">
+      <h2>Notas</h2>
+      <p>Suas anotações de estudo</p>
+    </div>
+    <div class="notas-layout">
+      <div class="notas-sidebar">
+        <div class="notas-sidebar-header">
+          <span>Anotações</span>
+          <button class="btn-new-nota" onclick="novaNota()">+ Nova</button>
+        </div>
+        <div class="notas-list" id="notas-list"></div>
+      </div>
+      <div class="nota-editor" id="nota-editor">
+        <div class="nota-empty-state" id="nota-empty">Selecione uma nota ou crie uma nova</div>
+        <div id="nota-form" style="display:none; display:none; flex-direction:column; height:100%;">
+          <div class="nota-editor-header">
+            <input type="text" id="nota-titulo" placeholder="Título da nota...">
+          </div>
+          <div class="nota-editor-body">
+            <textarea id="nota-corpo" placeholder="Comece a escrever..."></textarea>
+          </div>
+          <div class="nota-editor-footer">
+            <button class="btn-delete-nota" onclick="deletarNota()">Excluir</button>
+            <button class="btn-save" onclick="salvarNota()">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DESEMPENHO ── -->
+  <div class="page-view" id="view-desempenho">
+    <div class="page-header">
+      <h2>Desempenho</h2>
+      <p>Suas notas e médias por disciplina</p>
+    </div>
+    <div class="table-wrap">
+      <div class="table-title">Notas por Disciplina</div>
+      <table class="data-table">
+        <thead>
+          <tr><th>Disciplina</th><th>P1</th><th>P2</th><th>Trab.</th><th>Média</th><th>Situação</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Algoritmos</td><td>8.0</td><td>9.0</td><td>8.5</td><td><strong>8.5</strong></td>
+            <td><span class="badge-status ok">Aprovado</span></td>
+          </tr>
+          <tr>
+            <td>Cálculo II</td><td>4.5</td><td>5.8</td><td>6.0</td><td><strong>5.2</strong></td>
+            <td><span class="badge-status warn">Recuperação</span></td>
+          </tr>
+          <tr>
+            <td>Banco de Dados</td><td>9.5</td><td>8.5</td><td>9.0</td><td><strong>9.0</strong></td>
+            <td><span class="badge-status ok">Aprovado</span></td>
+          </tr>
+          <tr>
+            <td>Eng. de Software</td><td>7.0</td><td>8.5</td><td>8.0</td><td><strong>7.8</strong></td>
+            <td><span class="badge-status ok">Aprovado</span></td>
+          </tr>
+          <tr>
+            <td>Redes</td><td>3.5</td><td>5.5</td><td>4.5</td><td><strong>4.5</strong></td>
+            <td><span class="badge-status bad">Reprovando</span></td>
+          </tr>
+          <tr>
+            <td>P.O.O.</td><td>8.0</td><td>8.0</td><td>8.5</td><td><strong>8.1</strong></td>
+            <td><span class="badge-status ok">Aprovado</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:16px;">Progresso por Disciplina</div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Algoritmos</span><span>8.5 / 10</span></div>
+          <div class="progress-bar"><div class="progress-bar-fill" style="width:85%"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Cálculo II</span><span>5.2 / 10</span></div>
+          <div class="progress-bar"><div class="progress-bar-fill warn" style="width:52%;background:linear-gradient(90deg,#fbbf24,#f59e0b)"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Banco de Dados</span><span>9.0 / 10</span></div>
+          <div class="progress-bar"><div class="progress-bar-fill" style="width:90%"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Eng. de Software</span><span>7.8 / 10</span></div>
+          <div class="progress-bar"><div class="progress-bar-fill" style="width:78%"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Redes</span><span>4.5 / 10</span></div>
+          <div class="progress-bar"><div class="progress-bar-fill bad" style="width:45%"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>P.O.O.</span><span>8.1 / 10</span></div>
+          <div class="progress-bar"><div class="progress-bar-fill" style="width:81%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FREQUÊNCIA ── -->
+  <div class="page-view" id="view-frequencia">
+    <div class="page-header">
+      <h2>Frequência</h2>
+      <p>Controle de presença por disciplina</p>
+    </div>
+    <div class="cards-grid">
+      <div class="stat-card">
+        <div class="card-icon">✅</div>
+        <div class="card-label">Frequência Geral</div>
+        <div class="card-value">84%</div>
+        <div class="card-sub">Acima do mínimo (75%)</div>
+      </div>
+      <div class="stat-card">
+        <div class="card-icon">❌</div>
+        <div class="card-label">Total de Faltas</div>
+        <div class="card-value">18</div>
+        <div class="card-sub">Em todas as disciplinas</div>
+      </div>
+      <div class="stat-card">
+        <div class="card-icon">⚠️</div>
+        <div class="card-label">Em Risco</div>
+        <div class="card-value">1</div>
+        <div class="card-sub">Redes — 72%</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-title">Detalhamento por Disciplina</div>
+      <table class="data-table">
+        <thead>
+          <tr><th>Disciplina</th><th>Aulas</th><th>Presenças</th><th>Faltas</th><th>%</th><th>Situação</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Algoritmos</td><td>40</td><td>36</td><td>4</td><td>90%</td>
+            <td><span class="badge-status ok">Regular</span></td>
+          </tr>
+          <tr>
+            <td>Cálculo II</td><td>40</td><td>32</td><td>8</td><td>80%</td>
+            <td><span class="badge-status ok">Regular</span></td>
+          </tr>
+          <tr>
+            <td>Banco de Dados</td><td>40</td><td>38</td><td>2</td><td>95%</td>
+            <td><span class="badge-status ok">Regular</span></td>
+          </tr>
+          <tr>
+            <td>Eng. de Software</td><td>40</td><td>34</td><td>6</td><td>85%</td>
+            <td><span class="badge-status ok">Regular</span></td>
+          </tr>
+          <tr>
+            <td>Redes</td><td>40</td><td>29</td><td>11</td><td>72%</td>
+            <td><span class="badge-status bad">Em Risco</span></td>
+          </tr>
+          <tr>
+            <td>P.O.O.</td><td>40</td><td>35</td><td>5</td><td>88%</td>
+            <td><span class="badge-status ok">Regular</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;">
+      <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:16px;">Faltas disponíveis até o limite (25%)</div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Algoritmos</span><span>6 faltas restantes</span></div>
+          <div class="progress-bar"><div class="progress-bar-fill" style="width:40%"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Redes</span><span>0 faltas restantes</span></div>
+          <div class="progress-bar"><div class="progress-bar-fill bad" style="width:100%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DISCIPLINAS ── -->
+  <div class="page-view" id="view-disciplinas">
+    <div class="page-header">
+      <h2>Disciplinas</h2>
+      <p>Matérias do semestre atual</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
+      <div class="stat-card" style="padding:20px 22px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">💻</div>
+          <div><div style="font-size:14px;color:var(--text);font-weight:500;">Algoritmos</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. Carlos Melo</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
+          <span>📅 Seg / Qua — 08h00 às 09h40</span>
+          <span>🏫 Sala 304</span>
+          <span>📊 Média: <strong style="color:var(--text);">8.5</strong></span>
+        </div>
+      </div>
+      <div class="stat-card" style="padding:20px 22px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">📐</div>
+          <div><div style="font-size:14px;color:var(--text);font-weight:500;">Cálculo II</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. Ana Lima</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
+          <span>📅 Ter / Qui — 10h00 às 11h40</span>
+          <span>🏫 Sala 201</span>
+          <span>📊 Média: <strong style="color:#fbbf24;">5.2</strong></span>
+        </div>
+      </div>
+      <div class="stat-card" style="padding:20px 22px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">🗄️</div>
+          <div><div style="font-size:14px;color:var(--text);font-weight:500;">Banco de Dados</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. Ricardo Souza</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
+          <span>📅 Seg / Sex — 14h00 às 15h40</span>
+          <span>🏫 Lab 02</span>
+          <span>📊 Média: <strong style="color:var(--text);">9.0</strong></span>
+        </div>
+      </div>
+      <div class="stat-card" style="padding:20px 22px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">⚙️</div>
+          <div><div style="font-size:14px;color:var(--text);font-weight:500;">Eng. de Software</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. Fernanda Alves</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
+          <span>📅 Qua / Sex — 08h00 às 09h40</span>
+          <span>🏫 Sala 105</span>
+          <span>📊 Média: <strong style="color:var(--text);">7.8</strong></span>
+        </div>
+      </div>
+      <div class="stat-card" style="padding:20px 22px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">🌐</div>
+          <div><div style="font-size:14px;color:var(--text);font-weight:500;">Redes</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. João Batista</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
+          <span>📅 Ter / Qui — 08h00 às 09h40</span>
+          <span>🏫 Lab 01</span>
+          <span>📊 Média: <strong style="color:#f87171;">4.5</strong></span>
+        </div>
+      </div>
+      <div class="stat-card" style="padding:20px 22px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">🧩</div>
+          <div><div style="font-size:14px;color:var(--text);font-weight:500;">P.O.O.</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. Mariana Costa</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
+          <span>📅 Seg / Qua — 10h00 às 11h40</span>
+          <span>🏫 Lab 03</span>
+          <span>📊 Média: <strong style="color:var(--text);">8.1</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONFIGURAÇÕES ── -->
+  <div class="page-view" id="view-configuracoes">
+    <div class="page-header">
+      <h2>Configurações</h2>
+      <p>Preferências da conta e do sistema</p>
+    </div>
+    <div class="config-section">
+      <div class="config-section-title">Perfil</div>
+      <div class="config-row">
+        <div><div class="config-row-label">Nome</div><div class="config-row-sub">Exibido na interface</div></div>
+        <input class="config-input" type="text" id="cfg-nome" placeholder="Seu nome">
+      </div>
+      <div class="config-row">
+        <div><div class="config-row-label">E-mail</div><div class="config-row-sub">Contato institucional</div></div>
+        <input class="config-input" type="email" id="cfg-email" placeholder="seu@email.com">
+      </div>
+      <div class="config-row">
+        <div><div class="config-row-label">Curso</div></div>
+        <input class="config-input" type="text" id="cfg-curso" placeholder="Ex: Ciência da Computação">
+      </div>
+    </div>
+    <div class="config-section">
+      <div class="config-section-title">Notificações</div>
+      <div class="config-row">
+        <div><div class="config-row-label">Lembretes de prova</div><div class="config-row-sub">Alertar 2 dias antes</div></div>
+        <label class="toggle"><input type="checkbox" id="cfg-notif-prova" checked><span class="toggle-track"></span></label>
+      </div>
+      <div class="config-row">
+        <div><div class="config-row-label">Alerta de frequência</div><div class="config-row-sub">Avisar quando abaixo de 80%</div></div>
+        <label class="toggle"><input type="checkbox" id="cfg-notif-freq" checked><span class="toggle-track"></span></label>
+      </div>
+      <div class="config-row">
+        <div><div class="config-row-label">Resumo semanal</div><div class="config-row-sub">Relatório todo domingo</div></div>
+        <label class="toggle"><input type="checkbox" id="cfg-notif-resumo"><span class="toggle-track"></span></label>
+      </div>
+    </div>
+    <div class="config-section">
+      <div class="config-section-title">Acadêmico</div>
+      <div class="config-row">
+        <div><div class="config-row-label">Nota mínima para aprovação</div></div>
+        <input class="config-input" type="number" id="cfg-nota-min" value="6.0" min="0" max="10" step="0.5" style="min-width:100px;">
+      </div>
+      <div class="config-row">
+        <div><div class="config-row-label">Frequência mínima</div></div>
+        <input class="config-input" type="number" id="cfg-freq-min" value="75" min="0" max="100" style="min-width:100px;">
+      </div>
+    </div>
+    <button class="btn-config-save" onclick="salvarConfiguracoes()">Salvar alterações</button>
+  </div>
+
 </main>
 
 <script>
+  // ── NAVEGAÇÃO ──
+  const views = ['assistente','inicio','calendario','notas','desempenho','frequencia','disciplinas','configuracoes'];
+  let currentView = 'assistente';
+
+  function showView(name) {
+    // Esconde tudo
+    document.getElementById('home-view').classList.remove('visible');
+    document.getElementById('chat-view').classList.remove('visible');
+    views.filter(v => v !== 'assistente').forEach(v => {
+      const el = document.getElementById('view-' + v);
+      if (el) el.classList.remove('visible');
+    });
+
+    // Remove active de todos os nav items
+    views.forEach(v => {
+      const nav = document.getElementById('nav-' + v);
+      if (nav) nav.classList.remove('active');
+    });
+
+    currentView = name;
+    const navEl = document.getElementById('nav-' + name);
+    if (navEl) navEl.classList.add('active');
+
+    if (name === 'assistente') {
+      // Volta ao estado do assistente (home ou chat)
+      const inChat = document.getElementById('chat-view').style.display === 'flex'
+        || document.getElementById('messages').children.length > 0;
+      if (conversaAtual && conversaAtual.mensagens.length > 0) {
+        document.getElementById('chat-view').classList.add('visible');
+      } else {
+        document.getElementById('home-view').classList.add('visible');
+      }
+    } else {
+      const el = document.getElementById('view-' + name);
+      if (el) el.classList.add('visible');
+    }
+  }
+
+  function voltarHome() {
+    if (conversaAtual && conversaAtual.mensagens.length > 0) {
+      const jaExiste = historico.find(h => h === conversaAtual);
+      if (!jaExiste) {
+        historico.unshift(conversaAtual);
+        renderHistorico();
+      }
+    }
+    conversaAtual = null;
+    modo = null;
+    faltas = null;
+    document.getElementById('messages').innerHTML = '';
+    showView('assistente');
+  }
+
+  // ── CALENDÁRIO ──
+  let calDate = new Date(2026, 5, 1); // Junho 2026
+  const eventDays = [10, 13, 18, 25];
+
+  function renderCalendar() {
+    const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    document.getElementById('cal-month-label').textContent = months[calDate.getMonth()] + ' ' + calDate.getFullYear();
+    const grid = document.getElementById('cal-grid');
+    const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const today = new Date();
+    const firstDay = new Date(calDate.getFullYear(), calDate.getMonth(), 1).getDay();
+    const daysInMonth = new Date(calDate.getFullYear(), calDate.getMonth() + 1, 0).getDate();
+
+    let html = dayNames.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+    for (let i = 0; i < firstDay; i++) html += `<div class="cal-day empty"></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const isToday = d === today.getDate() && calDate.getMonth() === today.getMonth() && calDate.getFullYear() === today.getFullYear();
+      const hasEvent = eventDays.includes(d) && calDate.getMonth() === 5 && calDate.getFullYear() === 2026;
+      html += `<div class="cal-day${isToday ? ' today' : ''}${hasEvent ? ' has-event' : ''}">${d}</div>`;
+    }
+    grid.innerHTML = html;
+  }
+
+  function calNav(dir) {
+    calDate.setMonth(calDate.getMonth() + dir);
+    renderCalendar();
+  }
+
+  // ── NOTAS ──
+  let notas = [];
+  let notaAtualIndex = null;
+
+  function renderNotasList() {
+    const list = document.getElementById('notas-list');
+    if (notas.length === 0) {
+      list.innerHTML = '<div class="history-empty">Nenhuma nota ainda</div>';
+      return;
+    }
+    list.innerHTML = notas.map((n, i) => `
+      <div class="nota-list-item${notaAtualIndex === i ? ' active' : ''}" onclick="abrirNota(${i})">
+        <div class="nota-title-small">${n.titulo || 'Sem título'}</div>
+        <div class="nota-preview">${n.corpo || '...'}</div>
+        <div class="nota-date">${n.data}</div>
+      </div>
+    `).join('');
+  }
+
+  function novaNota() {
+    const nova = { titulo: '', corpo: '', data: new Date().toLocaleDateString('pt-BR') };
+    notas.unshift(nova);
+    notaAtualIndex = 0;
+    renderNotasList();
+    abrirNota(0);
+  }
+
+  function abrirNota(i) {
+    notaAtualIndex = i;
+    renderNotasList();
+    document.getElementById('nota-empty').style.display = 'none';
+    const form = document.getElementById('nota-form');
+    form.style.display = 'flex';
+    form.style.flexDirection = 'column';
+    form.style.height = '100%';
+    document.getElementById('nota-titulo').value = notas[i].titulo;
+    document.getElementById('nota-corpo').value = notas[i].corpo;
+  }
+
+  function salvarNota() {
+    if (notaAtualIndex === null) return;
+    notas[notaAtualIndex].titulo = document.getElementById('nota-titulo').value;
+    notas[notaAtualIndex].corpo = document.getElementById('nota-corpo').value;
+    notas[notaAtualIndex].data = new Date().toLocaleDateString('pt-BR');
+    renderNotasList();
+  }
+
+  function deletarNota() {
+    if (notaAtualIndex === null) return;
+    notas.splice(notaAtualIndex, 1);
+    notaAtualIndex = null;
+    document.getElementById('nota-empty').style.display = 'flex';
+    document.getElementById('nota-form').style.display = 'none';
+    renderNotasList();
+  }
+
+  // ── CONFIGURAÇÕES ──
+  function salvarConfiguracoes() {
+    const nome = document.getElementById('cfg-nome').value.trim();
+    if (nome) document.getElementById('display-name').textContent = nome;
+    const btn = document.querySelector('.btn-config-save');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Salvo!';
+    btn.style.opacity = '0.7';
+    setTimeout(() => { btn.textContent = orig; btn.style.opacity = ''; }, 1800);
+  }
+
+  // ── CHAT / ASSISTENTE ──
   const homeView = document.getElementById('home-view');
   const chatView = document.getElementById('chat-view');
   const messagesEl = document.getElementById('messages');
@@ -556,15 +1569,8 @@
   const chatSendBtn = document.getElementById('chat-send-btn');
   const historyList = document.getElementById('history-list');
 
-  // modo controla o que o próximo envio do usuário significa:
-  // null   - pergunta livre
-  // 'notas'  - usuário vai digitar as notas
-  // 'faltas' - usuário vai digitar o número de faltas
-  // 'total'  - usuário vai digitar o total de aulas
   let modo = null;
   let faltas = null;
-
-  // Histórico de conversas: [{titulo, mensagens: [{role, content}]}]
   let historico = [];
   let conversaAtual = null;
 
@@ -581,37 +1587,14 @@
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarChat(); }
   }
 
-  function quickSend(text) {
-    homeInputEl.value = text;
-    enviarHome();
-  }
-
   function setLoading(on) {
     chatInputEl.disabled = on;
     chatSendBtn.disabled = on;
   }
 
   function mostrarChat() {
-    homeView.style.display = 'none';
+    homeView.classList.remove('visible');
     chatView.classList.add('visible');
-  }
-
-  function voltarHome() {
-    // Salva conversa atual no histórico se tiver mensagens
-    if (conversaAtual && conversaAtual.mensagens.length > 0) {
-      const jaExiste = historico.find(h => h === conversaAtual);
-      if (!jaExiste) {
-        historico.unshift(conversaAtual);
-        renderHistorico();
-      }
-    }
-    // Reseta conversa
-    conversaAtual = null;
-    modo = null;
-    faltas = null;
-    messagesEl.innerHTML = '';
-    chatView.classList.remove('visible');
-    homeView.style.display = '';
   }
 
   function renderHistorico() {
@@ -632,40 +1615,27 @@
   function carregarConversa(index) {
     const conv = historico[index];
     if (!conv) return;
-
-    // Salva conversa atual antes de trocar
     if (conversaAtual && conversaAtual.mensagens.length > 0) {
       const jaExiste = historico.find(h => h === conversaAtual);
-      if (!jaExiste) {
-        historico.unshift(conversaAtual);
-        renderHistorico();
-      }
+      if (!jaExiste) { historico.unshift(conversaAtual); renderHistorico(); }
     }
-
     conversaAtual = conv;
-    modo = null;
-    faltas = null;
+    modo = null; faltas = null;
     messagesEl.innerHTML = '';
-
-    conv.mensagens.forEach(m => {
-      addMessageSilent(m.role, m.content);
-    });
-
+    conv.mensagens.forEach(m => addMessageSilent(m.role, m.content));
+    showView('assistente');
     mostrarChat();
   }
 
   function addMessageSilent(role, content) {
     const div = document.createElement('div');
     div.className = `msg ${role}`;
-
     const avatar = document.createElement('div');
     avatar.className = `avatar ${role}`;
     avatar.textContent = role === 'ai' ? '🎓' : '🖐';
-
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.textContent = content;
-
     div.appendChild(avatar);
     div.appendChild(bubble);
     messagesEl.appendChild(div);
@@ -675,15 +1645,12 @@
   function addMessage(role, content, extraClass = '') {
     const div = document.createElement('div');
     div.className = `msg ${role}`;
-
     const avatar = document.createElement('div');
     avatar.className = `avatar ${role}`;
     avatar.textContent = role === 'ai' ? '🎓' : '🖐';
-
     const bubble = document.createElement('div');
     bubble.className = 'bubble' + (extraClass ? ' ' + extraClass : '');
     bubble.textContent = content;
-
     div.appendChild(avatar);
     div.appendChild(bubble);
     messagesEl.appendChild(div);
@@ -691,7 +1658,6 @@
     return bubble;
   }
 
-  // Envia requisição POST para o Flask e retorna o JSON
   async function chamarFlask(rota, corpo) {
     const res = await fetch(rota, {
       method: 'POST',
@@ -704,10 +1670,8 @@
   async function enviarHome() {
     const texto = homeInputEl.value.trim();
     if (!texto) return;
-
-    // Cria nova conversa
     conversaAtual = { titulo: texto.slice(0, 36) + (texto.length > 36 ? '…' : ''), mensagens: [] };
-
+    showView('assistente');
     mostrarChat();
     homeInputEl.value = '';
     await processarMensagem(texto);
@@ -727,60 +1691,39 @@
     addMessage('user', texto);
     if (conversaAtual) conversaAtual.mensagens.push({ role: 'user', content: texto });
     setLoading(true);
-
     const typing = addMessage('ai', 'Processando...', 'typing');
-
     try {
       let resposta = '';
-
       if (modo === 'notas') {
-        // Usuário enviou as notas, manda para /calcular_media no Flask
         const dados = await chamarFlask('/calcular_media', { notas: texto });
-        resposta = dados.texto;
-        modo = null;
-
+        resposta = dados.texto; modo = null;
       } else if (modo === 'faltas') {
-        // Usuário enviou as faltas, guarda e pede o total de aulas
-        faltas = texto;
-        modo = 'total';
+        faltas = texto; modo = 'total';
         resposta = 'Quantas aulas no total?';
-
       } else if (modo === 'total') {
-        // Usuário enviou o total, manda tudo para /calcular_faltas no Flask
         const dados = await chamarFlask('/calcular_faltas', { faltas, total: texto });
-        resposta = dados.texto;
-        modo = null;
-        faltas = null;
-
+        resposta = dados.texto; modo = null; faltas = null;
       } else {
-        // Pergunta livre, manda para /perguntar no Flask (função condicionais)
         const dados = await chamarFlask('/perguntar', { pergunta: texto });
-
-        if (dados.tipo === 'pedir_notas') {
-          modo = 'notas';
-          resposta = 'Digite suas notas separadas por espaço ou vírgula:';
-        } else if (dados.tipo === 'pedir_faltas') {
-          modo = 'faltas';
-          resposta = 'Quantas faltas você teve?';
-        } else {
-          resposta = dados.texto;
-        }
+        if (dados.tipo === 'pedir_notas') { modo = 'notas'; resposta = 'Digite suas notas separadas por espaço ou vírgula:'; }
+        else if (dados.tipo === 'pedir_faltas') { modo = 'faltas'; resposta = 'Quantas faltas você teve?'; }
+        else { resposta = dados.texto; }
       }
-
       typing.textContent = resposta;
       typing.classList.remove('typing');
-
       if (conversaAtual) conversaAtual.mensagens.push({ role: 'ai', content: resposta });
-
     } catch (err) {
       const errMsg = 'Erro ao conectar com o servidor. Verifique se o Flask está rodando.';
       typing.textContent = errMsg;
       typing.classList.remove('typing');
       if (conversaAtual) conversaAtual.mensagens.push({ role: 'ai', content: errMsg });
     }
-
     setLoading(false);
   }
+
+  // ── INIT ──
+  renderCalendar();
+  renderNotasList();
 </script>
 </body>
 </html>
