@@ -42,7 +42,11 @@ cursor.executescript("""
     conteudo TEXT,
     data_hora DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-    CREATE TABLE IF NOT EXISTS usuarios ()               
+    CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    senha TEXT NOT NULL
+)       
     );
                      """)
 

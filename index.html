@@ -9,16 +9,17 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0d0f14;
-      --surface: #13161e;
-      --surface2: #1a1e29;
-      --border: #252836;
-      --accent: #6c8fff;
-      --accent2: #a78bfa;
-      --text: #e8eaf0;
-      --text-muted: #7b82a0;
-      --user-bubble: #1e2340;
-      --ai-bubble: #161a26;
+      --bg: #080909;
+      --surface: #0e0f10;
+      --surface2: #131415;
+      --border: #1e1f21;
+      --accent: #4a5568;
+      --accent2: #6b7280;
+      --text: #c9cdd6;
+      --text-muted: #52555e;
+      --user-bubble: #111214;
+      --ai-bubble: #0c0d0e;
+      --sidebar-w: 220px;
     }
 
     body {
@@ -27,10 +28,7 @@
       color: var(--text);
       min-height: 100vh;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
+      overflow: hidden;
     }
 
     body::before {
@@ -38,75 +36,295 @@
       position: fixed;
       inset: 0;
       background:
-        radial-gradient(ellipse 60% 40% at 20% 20%, rgba(108,143,255,0.07) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 50% at 80% 80%, rgba(167,139,250,0.06) 0%, transparent 60%);
+        radial-gradient(ellipse 60% 40% at 20% 20%, rgba(74,85,104,0.05) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 80% 80%, rgba(107,114,128,0.04) 0%, transparent 60%);
       pointer-events: none;
       z-index: 0;
     }
 
-    .wrapper {
+    /* ── SIDEBAR ── */
+    .sidebar {
       position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 680px;
+      z-index: 2;
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
+      padding: 24px 0 16px;
+      flex-shrink: 0;
     }
 
-    header {
+    .sidebar-logo {
       display: flex;
       align-items: center;
-      gap: 14px;
-      margin-bottom: 24px;
-      padding: 0 4px;
+      gap: 10px;
+      padding: 0 18px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
     }
 
-    .logo {
-      width: 44px; height: 44px;
-      border-radius: 12px;
+    .sidebar-logo .logo-icon {
+      width: 34px; height: 34px;
+      border-radius: 10px;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px; flex-shrink: 0;
+      font-size: 16px; flex-shrink: 0;
     }
 
-    .header-text h1 {
+    .sidebar-logo span {
       font-family: 'Playfair Display', serif;
-      font-size: 22px; font-weight: 600;
-      color: var(--text); line-height: 1.2;
+      font-size: 14px;
+      color: var(--text);
+      white-space: nowrap;
     }
 
-    .header-text p {
-      font-size: 13px; color: var(--text-muted);
-      margin-top: 2px; font-weight: 300;
+    .sidebar-section {
+      padding: 0 12px;
+      margin-bottom: 24px;
     }
 
-    .chat-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
+    .sidebar-section-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      padding: 0 6px;
+      margin-bottom: 6px;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 13.5px;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+
+    .sidebar-item:hover { background: var(--surface2); color: var(--text); }
+    .sidebar-item.active { background: var(--surface2); color: var(--text); }
+
+    .sidebar-item svg {
+      width: 16px; height: 16px;
+      flex-shrink: 0;
+      opacity: 0.6;
+    }
+    .sidebar-item:hover svg, .sidebar-item.active svg { opacity: 1; }
+
+    .sidebar-item .badge {
+      margin-left: auto;
+      background: var(--border);
+      color: var(--text-muted);
+      font-size: 10px;
+      padding: 2px 7px;
       border-radius: 20px;
-      overflow: hidden;
+    }
+
+    /* Histórico */
+    .history-list {
+      padding: 0 12px;
       display: flex;
       flex-direction: column;
+      gap: 2px;
+      overflow-y: auto;
+      max-height: 180px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
     }
 
-    .chips {
-      display: flex; flex-wrap: wrap; gap: 8px;
-      padding: 16px 20px 0;
+    .history-list::-webkit-scrollbar { width: 3px; }
+    .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      transition: background 0.15s, color 0.15s;
+      overflow: hidden;
     }
 
-    .chip {
-      font-size: 12px; padding: 5px 14px;
-      border-radius: 20px; border: 1px solid var(--border);
-      background: var(--surface2); color: var(--text-muted);
-      cursor: pointer; font-family: 'DM Sans', sans-serif;
-      transition: border-color .2s, color .2s;
+    .history-item:hover { background: var(--surface2); color: var(--text); }
+
+    .history-item svg {
+      width: 13px; height: 13px;
+      flex-shrink: 0;
+      opacity: 0.5;
     }
-    .chip:hover { border-color: var(--accent); color: var(--text); }
+
+    .history-item span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-empty {
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding: 0 12px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+
+    .sidebar-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .sidebar-user:hover { background: var(--surface2); }
+
+    .user-avatar {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+
+    .user-info { overflow: hidden; }
+    .user-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+
+    /* ── MAIN ── */
+    .main {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── HOME VIEW ── */
+    .home-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px 20px;
+      gap: 32px;
+    }
+
+    .home-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--text);
+      text-align: center;
+    }
+
+    .home-input-wrap {
+      width: 100%;
+      max-width: 640px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .home-input-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 10px 14px 10px 20px;
+      transition: border-color 0.2s;
+    }
+    .home-input-bar:focus-within { border-color: var(--accent); }
+
+    .home-input-bar textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14.5px;
+      resize: none;
+      min-height: 24px;
+      max-height: 120px;
+      line-height: 1.5;
+      padding: 0;
+    }
+    .home-input-bar textarea::placeholder { color: var(--text-muted); }
+    .home-input-bar textarea:disabled { opacity: .5; }
+
+    .home-input-bar .send-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .home-input-bar .send-btn:hover:not(:disabled) { opacity: 0.85; transform: scale(1.05); }
+    .home-input-bar .send-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .home-input-bar .send-btn svg { width: 16px; height: 16px; }
+
+    .home-chips {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .home-chip {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 50px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: border-color .2s, color .2s, background .2s;
+    }
+    .home-chip:hover { border-color: var(--accent); color: var(--text); background: var(--surface2); }
+    .home-chip svg { width: 14px; height: 14px; opacity: 0.7; }
+
+    /* ── CHAT VIEW ── */
+    .chat-view {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-view.visible { display: flex; }
 
     .messages {
-      padding: 24px;
+      flex: 1;
+      padding: 32px 40px;
       display: flex; flex-direction: column; gap: 16px;
-      min-height: 320px; max-height: 460px;
       overflow-y: auto;
       scrollbar-width: thin;
       scrollbar-color: var(--border) transparent;
@@ -129,11 +347,11 @@
       flex-shrink: 0; display: flex;
       align-items: center; justify-content: center; font-size: 14px;
     }
-    .avatar.ai   { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+    .avatar.ai { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
     .avatar.user { background: var(--surface2); border: 1px solid var(--border); font-size: 15px; }
 
     .bubble {
-      max-width: 78%; padding: 12px 16px; border-radius: 16px;
+      max-width: 72%; padding: 12px 16px; border-radius: 16px;
       font-size: 14.5px; line-height: 1.65; font-weight: 400;
       white-space: pre-wrap;
     }
@@ -147,125 +365,320 @@
 
     .msg.user .bubble {
       background: var(--user-bubble);
-      border: 1px solid rgba(108,143,255,0.2);
+      border: 1px solid rgba(30,31,33,0.8);
       border-top-right-radius: 4px; color: var(--text);
     }
 
-    .input-area {
-      padding: 16px 20px; border-top: 1px solid var(--border);
-      background: var(--surface2); display: flex; gap: 10px; align-items: flex-end;
+    .chat-input-area {
+      padding: 16px 40px 24px;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
     }
 
-    textarea {
-      flex: 1; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 12px; padding: 12px 16px; color: var(--text);
-      font-family: 'DM Sans', sans-serif; font-size: 14px;
-      resize: none; outline: none;
-      min-height: 46px; max-height: 120px; line-height: 1.5;
+    .chat-input-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 10px 14px 10px 20px;
       transition: border-color 0.2s;
     }
-    textarea::placeholder { color: var(--text-muted); }
-    textarea:focus    { border-color: var(--accent); }
-    textarea:disabled { opacity: .5; }
+    .chat-input-bar:focus-within { border-color: var(--accent); }
 
-    button {
-      width: 46px; height: 46px; border-radius: 12px; border: none;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: white; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; transition: opacity 0.2s, transform 0.15s;
+    .chat-input-bar textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14.5px;
+      resize: none;
+      min-height: 24px;
+      max-height: 120px;
+      line-height: 1.5;
+      padding: 0;
     }
-    button:hover:not(:disabled)  { opacity: 0.88; transform: scale(1.04); }
-    button:active:not(:disabled) { transform: scale(0.96); }
-    button:disabled { opacity: .4; cursor: not-allowed; }
-    button svg { width: 18px; height: 18px; }
+    .chat-input-bar textarea::placeholder { color: var(--text-muted); }
+    .chat-input-bar textarea:disabled { opacity: .5; }
+
+    .chat-input-bar .send-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .chat-input-bar .send-btn:hover:not(:disabled) { opacity: 0.85; transform: scale(1.05); }
+    .chat-input-bar .send-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .chat-input-bar .send-btn svg { width: 16px; height: 16px; }
 
     .footer-note {
-      text-align: center; font-size: 11.5px;
-      color: var(--text-muted); margin-top: 14px; font-weight: 300;
+      text-align: center; font-size: 11px;
+      color: var(--text-muted); margin-top: 10px; font-weight: 300;
     }
   </style>
 </head>
 <body>
 
-<div class="wrapper">
-  <header>
-    <div class="logo">🎓</div>
-    <div class="header-text">
-      <h1>Assistente Acadêmico</h1>
-      <p>Tire suas dúvidas de forma clara e rápida</p>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">🎓</div>
+    <span>Acadêmico</span>
+  </div>
+
+  <div class="sidebar-section">
+    <p class="sidebar-section-title">Menu</p>
+    <div class="sidebar-item active" onclick="voltarHome()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Assistente
     </div>
-  </header>
-
-  <div class="chat-box">
-
-    <div class="chips">
-      <span class="chip" onclick="quickSend('Qual o horário da aula?')">Horário da aula</span>
-      <span class="chip" onclick="quickSend('Quero calcular minha média')">Calcular média</span>
-      <span class="chip" onclick="quickSend('Quero verificar minhas faltas')">Verificar faltas</span>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Início
     </div>
-
-    <div class="messages" id="messages">
-      <div class="msg ai">
-        <div class="avatar ai">🎓</div>
-        <div class="bubble">Olá! Sou seu assistente acadêmico. Como posso te ajudar hoje?</div>
-      </div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Calendário
+      <span class="badge">em breve</span>
     </div>
-
-    <div class="input-area">
-      <textarea
-        id="input"
-        placeholder="Digite sua dúvida..."
-        rows="1"
-        onkeydown="handleKey(event)"
-        oninput="autoResize(this)"
-      ></textarea>
-      <button id="send-btn" onclick="enviar()" title="Enviar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="22" y1="2" x2="11" y2="13"></line>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-        </svg>
-      </button>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Notas
+      <span class="badge">em breve</span>
     </div>
   </div>
 
-  <p class="footer-note">Respostas podem conter erros — sempre revise</p>
-</div>
+  <div class="sidebar-section">
+    <p class="sidebar-section-title">Acadêmico</p>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Desempenho
+      <span class="badge">em breve</span>
+    </div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Frequência
+      <span class="badge">em breve</span>
+    </div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Disciplinas
+      <span class="badge">em breve</span>
+    </div>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div class="sidebar-section">
+    <p class="sidebar-section-title">Histórico</p>
+    <div class="history-list" id="history-list">
+      <div class="history-empty">Nenhuma conversa ainda</div>
+    </div>
+  </div>
+
+  <div class="sidebar-bottom">
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Configurações
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar">👤</div>
+      <div class="user-info">
+        <div class="user-name">Usuário</div>
+        <div class="user-role">Estudante</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HOME -->
+  <div class="home-view" id="home-view">
+    <h1 class="home-title">O que você precisa estudar hoje?</h1>
+
+    <div class="home-input-wrap">
+      <div class="home-input-bar">
+        <textarea
+          id="home-input"
+          placeholder="Pergunte alguma coisa..."
+          rows="1"
+          onkeydown="handleHomeKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <button class="send-btn" id="home-send-btn" onclick="enviarHome()" title="Enviar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="chat-view" id="chat-view">
+    <div class="messages" id="messages"></div>
+
+    <div class="chat-input-area">
+      <div class="chat-input-bar">
+        <textarea
+          id="chat-input"
+          placeholder="Continue a conversa..."
+          rows="1"
+          onkeydown="handleChatKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <button class="send-btn" id="chat-send-btn" onclick="enviarChat()" title="Enviar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+      <p class="footer-note">Respostas podem conter erros — sempre revise</p>
+    </div>
+  </div>
+
+</main>
 
 <script>
+  const homeView = document.getElementById('home-view');
+  const chatView = document.getElementById('chat-view');
   const messagesEl = document.getElementById('messages');
-  const inputEl    = document.getElementById('input');
-  const sendBtn    = document.getElementById('send-btn');
+  const homeInputEl = document.getElementById('home-input');
+  const chatInputEl = document.getElementById('chat-input');
+  const homeSendBtn = document.getElementById('home-send-btn');
+  const chatSendBtn = document.getElementById('chat-send-btn');
+  const historyList = document.getElementById('history-list');
 
   // modo controla o que o próximo envio do usuário significa:
-  // null - pergunta livre
+  // null   - pergunta livre
   // 'notas'  - usuário vai digitar as notas
   // 'faltas' - usuário vai digitar o número de faltas
   // 'total'  - usuário vai digitar o total de aulas
-  let modo   = null;
+  let modo = null;
   let faltas = null;
+
+  // Histórico de conversas: [{titulo, mensagens: [{role, content}]}]
+  let historico = [];
+  let conversaAtual = null;
 
   function autoResize(el) {
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
   }
 
-  function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
+  function handleHomeKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarHome(); }
+  }
+
+  function handleChatKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarChat(); }
   }
 
   function quickSend(text) {
-    inputEl.value = text;
-    enviar();
+    homeInputEl.value = text;
+    enviarHome();
   }
 
   function setLoading(on) {
-    inputEl.disabled = on;
-    sendBtn.disabled = on;
+    chatInputEl.disabled = on;
+    chatSendBtn.disabled = on;
+  }
+
+  function mostrarChat() {
+    homeView.style.display = 'none';
+    chatView.classList.add('visible');
+  }
+
+  function voltarHome() {
+    // Salva conversa atual no histórico se tiver mensagens
+    if (conversaAtual && conversaAtual.mensagens.length > 0) {
+      const jaExiste = historico.find(h => h === conversaAtual);
+      if (!jaExiste) {
+        historico.unshift(conversaAtual);
+        renderHistorico();
+      }
+    }
+    // Reseta conversa
+    conversaAtual = null;
+    modo = null;
+    faltas = null;
+    messagesEl.innerHTML = '';
+    chatView.classList.remove('visible');
+    homeView.style.display = '';
+  }
+
+  function renderHistorico() {
+    if (historico.length === 0) {
+      historyList.innerHTML = '<div class="history-empty">Nenhuma conversa ainda</div>';
+      return;
+    }
+    historyList.innerHTML = historico.map((conv, i) => `
+      <div class="history-item" onclick="carregarConversa(${i})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>${conv.titulo}</span>
+      </div>
+    `).join('');
+  }
+
+  function carregarConversa(index) {
+    const conv = historico[index];
+    if (!conv) return;
+
+    // Salva conversa atual antes de trocar
+    if (conversaAtual && conversaAtual.mensagens.length > 0) {
+      const jaExiste = historico.find(h => h === conversaAtual);
+      if (!jaExiste) {
+        historico.unshift(conversaAtual);
+        renderHistorico();
+      }
+    }
+
+    conversaAtual = conv;
+    modo = null;
+    faltas = null;
+    messagesEl.innerHTML = '';
+
+    conv.mensagens.forEach(m => {
+      addMessageSilent(m.role, m.content);
+    });
+
+    mostrarChat();
+  }
+
+  function addMessageSilent(role, content) {
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = `avatar ${role}`;
+    avatar.textContent = role === 'ai' ? '🎓' : '🖐';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = content;
+
+    div.appendChild(avatar);
+    div.appendChild(bubble);
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
   function addMessage(role, content, extraClass = '') {
-    const div    = document.createElement('div');
+    const div = document.createElement('div');
     div.className = `msg ${role}`;
 
     const avatar = document.createElement('div');
@@ -286,21 +699,38 @@
   // Envia requisição POST para o Flask e retorna o JSON
   async function chamarFlask(rota, corpo) {
     const res = await fetch(rota, {
-      method:  'POST',
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(corpo)
     });
     return res.json();
   }
 
-  async function enviar() {
-    const texto = inputEl.value.trim();
+  async function enviarHome() {
+    const texto = homeInputEl.value.trim();
     if (!texto) return;
 
+    // Cria nova conversa
+    conversaAtual = { titulo: texto.slice(0, 36) + (texto.length > 36 ? '…' : ''), mensagens: [] };
+
+    mostrarChat();
+    homeInputEl.value = '';
+    await processarMensagem(texto);
+    chatInputEl.focus();
+  }
+
+  async function enviarChat() {
+    const texto = chatInputEl.value.trim();
+    if (!texto) return;
+    chatInputEl.value = '';
+    chatInputEl.style.height = 'auto';
+    chatInputEl.focus();
+    await processarMensagem(texto);
+  }
+
+  async function processarMensagem(texto) {
     addMessage('user', texto);
-    inputEl.value = '';
-    inputEl.style.height = 'auto';
-    inputEl.focus();
+    if (conversaAtual) conversaAtual.mensagens.push({ role: 'user', content: texto });
     setLoading(true);
 
     const typing = addMessage('ai', 'Processando...', 'typing');
@@ -316,15 +746,15 @@
 
       } else if (modo === 'faltas') {
         // Usuário enviou as faltas, guarda e pede o total de aulas
-        faltas   = texto;
-        modo     = 'total';
+        faltas = texto;
+        modo = 'total';
         resposta = 'Quantas aulas no total?';
 
       } else if (modo === 'total') {
         // Usuário enviou o total, manda tudo para /calcular_faltas no Flask
         const dados = await chamarFlask('/calcular_faltas', { faltas, total: texto });
         resposta = dados.texto;
-        modo   = null;
+        modo = null;
         faltas = null;
 
       } else {
@@ -332,10 +762,10 @@
         const dados = await chamarFlask('/perguntar', { pergunta: texto });
 
         if (dados.tipo === 'pedir_notas') {
-          modo     = 'notas';
+          modo = 'notas';
           resposta = 'Digite suas notas separadas por espaço ou vírgula:';
         } else if (dados.tipo === 'pedir_faltas') {
-          modo     = 'faltas';
+          modo = 'faltas';
           resposta = 'Quantas faltas você teve?';
         } else {
           resposta = dados.texto;
@@ -345,9 +775,13 @@
       typing.textContent = resposta;
       typing.classList.remove('typing');
 
+      if (conversaAtual) conversaAtual.mensagens.push({ role: 'ai', content: resposta });
+
     } catch (err) {
-      typing.textContent = 'Erro ao conectar com o servidor. Verifique se o Flask está rodando.';
+      const errMsg = 'Erro ao conectar com o servidor. Verifique se o Flask está rodando.';
+      typing.textContent = errMsg;
       typing.classList.remove('typing');
+      if (conversaAtual) conversaAtual.mensagens.push({ role: 'ai', content: errMsg });
     }
 
     setLoading(false);
