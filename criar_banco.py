@@ -63,29 +63,29 @@ cursor.execute("INSERT OR IGNORE INTO alunos VALUES (1, 'Carlos')")
 
 # Inserção de notas simplificada sem o risco de duplicidade de chaves
 cursor.executemany("INSERT INTO notas (aluno_id, materia, nota) VALUES (?,?,?)", [
-    (1, "Matemática", 7.5),
-    (1, "Matemática", 8.0),
-    (1, "Matemática", 5.5),
-    (1, "Português", 8.0),
-    (1, "Português", 7.8),
-    (1, "Português", 6.2),
-    (1, "História", 5.5),
-    (1, "História", 6.3),
-    (1, "História", 9.0),
+    (1, "Engenharia de Dados", 7.5),
+    (1, "Engenharia de Dados", 8.0),
+    (1, "Engenharia de Dados", 5.5),
+    (1, "Engenharia de Soluções", 8.0),
+    (1, "Engenharia de Soluções", 7.8),
+    (1, "Engenharia de Soluções", 6.2),
+    (1, "Fundamentos da Computação e Infraestrutura", 5.5),
+    (1, "Fundamentos da Computação e Infraestrutura", 6.3),
+    (1, "Fundamentos da Computação e Infraestrutura", 9.0),
 ])
 
 cursor.executemany("INSERT OR IGNORE INTO faltas (aluno_id, materia, faltas, total_aulas) VALUES (?,?,?,?)", [
-    (1, "Matemática", 4, 40),
-    (1, "Português",  2, 40),
-    (1, "História",   12, 40),
+    (1, "Engenharia de Dados", 4, 40),
+    (1, "Engenharia de Soluções",  2, 40),
+    (1, "Fundamentos da Computação e Infraestrutura",   12, 40),
 ])
 
 cursor.executemany("INSERT OR IGNORE INTO provas (aluno_id, materia, data, conteudo) VALUES (?,?,?,?)", [
-    (1, "Matemática", "2025-06-10", "Equações do 2º grau e funções"),
-    (1, "Português",  "2025-06-12", "Interpretação de texto e gramática"),
-    (1, "História",   "2025-06-15", "Segunda Guerra Mundial"),
+    (1, "Engenharia de Dados", "2025-06-10", "Equações do 2º grau e funções"),
+    (1, "Engenharia de Soluções",  "2025-06-12", "Interpretação de texto e gramática"),
+    (1, "Fundamentos da Computação e Infraestrutura",   "2025-06-15", "Segunda Guerra Mundial"),
 ])
 
 conn.commit()
 conn.close()
-print("Feito!")
+print("Banco criado ou atualizado com sucesso")
