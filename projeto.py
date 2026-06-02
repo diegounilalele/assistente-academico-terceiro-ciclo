@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory # comunicação com o front-end
+from flask import Flask, request, jsonify, send_from_directory,session # comunicação com o front-end
 from dotenv import load_dotenv # Esconder a api
 from pyngrok import ngrok # Usado para expor o servidor Flask na internet via túnel ngrok
 import sqlite3 # banco de dados
@@ -10,10 +10,11 @@ import os
 load_dotenv() # carrega as variáveis do .env
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434") # URL do Ollama, local por padrão ou na nuvem via ngrok pelo .env
-OLLAMA_MODEL = os.getenv('qwen3.5:9b') # Modelo do Ollama a ser usado, pode ser alterado no .env
+OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'qwen3.5:9b') # Modelo do Ollama a ser usado, pode ser alterado no .env
 NGROK_TOKEN = os.getenv("ngrok_token", "") # Token do ngrok, necessário para URL fixa (opcional no plano gratuito)
 
 servidor = Flask(__name__)
+servidor.secret_key = os.getenv("SEGREDOSEGREDO","bologna")
 
 
 aluno_id = 1 # É só colocar input que é possível a busca dos dados por ID
@@ -233,6 +234,216 @@ def perguntar():
     pergunta = dados.get("pergunta", "") # Extrai a pergunta do JSON recebido, usando o método get para evitar erros caso a chave "pergunta" não exista, e armazena na variável 'pergunta'
     return jsonify(condicionais(pergunta)) # Retorna para o código principal a pergunta em json
 
+#------------------------------------------------------------
+@servidor.route("/login", methods=["POST"])
+def login():
+    dados = request.get_json()
+    username = dados.get("username") #direto do universidade.db
+    senha = dados.get("senha")
+
+    #conectar ao universidade.db
+    conexao = sqlite3.connect("universidade.db")
+    cursor = conexao.cursor()
+
+    #Buscar o usuario correspondente
+    cursor.execute("""
+	SELECT id, tipo
+	FROM usuarios
+	WHERE username = ? AND senha = ?
+    """, (username, senha))
+
+    usuario = cursor.fetchone()
+    conexao.close()
+
+    #Valida o resultado
+    if usuario:
+        # Se achou, 'usuario' será uma tupla como (1, 'professor')
+        session["usuario_id"] = usuario[0]
+        session["usuario_tipo"] = usuario[1]
+        
+        return jsonify({"status": "sucesso", "tipo": usuario[1], "mensagem": "Login realizado!"})
+    else:
+        return jsonify({"status": "erro", "mensagem": "Usuário ou senha incorretos."}), 401 #não autorizado
+#-------------------------------------------------------------
+#1------------------------------------------------------------
+@servidor.route("/cadastrar_nota", methods=["POST"])
+def cadastrar_nota():
+    # se for diferente de professor, não pode (padrao json, estilo api do ollama)
+    if session.get("usuario_tipo") != "professor":
+        return jsonify({"status": "erro", "mensagem": "Acesso negado. Apenas professores podem cadastrar notas."}), 403 #
+
+    dados = request.get_json()            #direto do arquivo .db
+    aluno_id_gamer = dados.get("aluno_id")
+    materia = dados.get("materia")
+    nota = dados.get("nota")
+
+    #validação
+    if not aluno_id_gamer or not materia or nota is None:
+        return jsonify({"status": "erro", "mensagem": "Dados incompletos."}), 400
+
+    # Abre sessão
+    conexao = sqlite3.connect("universidade.db")
+    cursor = conexao.cursor()
+    
+    cursor.execute("INSERT INTO notas (aluno_id, materia, nota) VALUES (?, ?, ?)", (aluno_id_gamer, materia, nota))
+    
+    conexao.commit() # Salva no universidade.db
+    conexao.close() # Encerra sessão
+
+    return jsonify({"status": "sucesso", "mensagem": f"Nota cadastrada com sucesso para o aluno ID {aluno_id_gamer}!"})# para o html, não é print, é return (demorei pra descobrir)
+#1-------------------------------------------------------------
+#2-------------------------------------------------------------
+@servidor.route("/cadastrar_aluno", methods=["POST"])
+def cadastrar_aluno():
+    #barreira de segurança específico
+    if session.get("usuario_tipo") != "professor":
+        return jsonify({"status": "erro", "mensagem": "Acesso negado."}), 403 #forbidden
+
+    dados = request.get_json()
+    novo_id = dados.get("id") #pego do universidade.db
+    novo_nome = dados.get("nome")
+
+    if not novo_id or not novo_nome:
+        return jsonify({"status": "erro", "mensagem": "Dados incompletos."}), 400
+
+    conexao = sqlite3.connect("universidade.db")
+    cursor = conexao.cursor()
+
+    try:
+        # Insere permanentemente na tabela alunos do universidade.db
+        cursor.execute("INSERT INTO alunos (id, nome) VALUES (?, ?)", (novo_id, novo_nome))
+        conexao.commit() # é aqui que grava
+        return jsonify({"status": "sucesso", "mensagem": f"Aluno {novo_nome} cadastrado com sucesso!"})
+    except sqlite3.IntegrityError:
+        # Se tentar cadastrar um id que já existe
+        return jsonify({"status": "erro", "mensagem": f"Erro: O ID {novo_id} já está em uso por outro aluno."})
+    finally: #enfim
+        conexao.close()
+#2-------------------------------------------------------------
+#3-------------------------------------------------------------
+@servidor.route("/atualizar_aluno", methods=["POST"])
+def atualizar_aluno():
+    if session.get("usuario_tipo") != "professor": return jsonify({"status": "erro"}), 403
+    
+    dados = request.get_json()
+    aluno_id = dados.get("id")
+    novo_nome = dados.get("nome")
+
+    conexao = sqlite3.connect("universidade.db")
+    cursor = conexao.cursor()
+    cursor.execute("UPDATE alunos SET nome = ? WHERE id = ?", (novo_nome, aluno_id)) # parte mais importante do def
+    conexao.commit()
+    conexao.close()
+    return jsonify({"status": "sucesso", "mensagem": "Nome do aluno atualizado!"})
+#3--------------------------------------------------------------
+#4--------------------------------------------------------------
+@servidor.route("/deletar_aluno", methods=["POST"])
+def deletar_aluno():
+    if session.get("usuario_tipo") != "professor": return jsonify({"status": "erro"}), 403
+    
+    dados = request.get_json()
+    aluno_id = dados.get("id")
+
+    conexao = sqlite3.connect("universidade.db")
+    cursor = conexao.cursor()
+    
+    # pragma é um negócio interessante, é = CASCADE que é = a deletar tudo sobre o aluno
+    cursor.execute("PRAGMA foreign_keys = ON;")
+    cursor.execute("DELETE FROM alunos WHERE id = ?", (aluno_id,))
+    
+    conexao.commit()
+    conexao.close()
+    return jsonify({"status": "sucesso", "mensagem": "Aluno e todos os seus registros acadêmicos foram apagados!"})
+#4-------------------------------------------------------------
+#5------------------------------------------------------------- 
+@servidor.route("/relatorio_geral", methods=["POST"])
+def relatorio_geral():
+    # clássica trava de segurança
+    if session.get("usuario_tipo") != "professor": 
+        return jsonify({"status": "erro", "mensagem": "Acesso negado."}), 403
+
+    conexao = sqlite3.connect("universidade.db")
+    cursor = conexao.cursor()
+
+    # Puxa todos os alunos
+    cursor.execute("SELECT id, nome FROM alunos ORDER BY id")
+    alunos = cursor.fetchall()
+
+    if not alunos:
+        conexao.close()
+        return jsonify({"status": "sucesso", "relatorio": "Nenhum aluno cadastrado no sistema."})
+
+    texto_sigma = "=== RELATÓRIO GERAL DA UNIVERSIDADE ===\n\n"
+
+    # Para cada aluno
+    for id_aluno, nome in alunos:
+        texto_sigma += f"🎓 MATRÍCULA [{id_aluno}] - {nome.upper()}\n" #soubesse que dava pra coloca emoji
+        
+        # Busca as notas desse aluno específico
+        cursor.execute("SELECT materia, nota FROM notas WHERE aluno_id = ?", (id_aluno,))
+        notas = cursor.fetchall()
+        
+        if notas:
+            texto_sigma += "  📄 Notas:\n"
+            for materia, nota in notas:
+                texto_sigma += f"     - {materia}: {nota}\n"
+        else:
+            texto_sigma += "  📄 Notas: (Nenhuma nota lançada)\n"
+
+        # Busca as faltas desse aluno
+        cursor.execute("SELECT materia, faltas FROM faltas WHERE aluno_id = ?", (id_aluno,))
+        faltas = cursor.fetchall()
+        
+        if faltas:
+            texto_sigma += "  ⚠️ Faltas:\n"
+            for materia, falta in faltas:
+                texto_sigma += f"     - {materia}: {falta} faltas\n"
+
+        texto_sigma += "---------------------------------------\n"
+
+    conexao.close()
+    
+    # Devolve o dossiê completo para o JavaScript
+    return jsonify({"status": "sucesso", "relatorio": texto_sigma})
+#5------------------------------------------------------------------- fim?
+#6------------------------------------------------------------------- nao
+@servidor.route("/cadastrar_falta", methods=["POST"])
+def cadastrar_falta():
+    if session.get("usuario_tipo") != "professor":
+        return jsonify({"status": "erro", "mensagem": "Acesso negado."}), 403
+
+    dados = request.get_json()           #preciso dizer que é pego do .db?
+    aluno_id = dados.get("aluno_id")
+    materia = dados.get("materia")
+    faltas = dados.get("faltas")
+    total_aulas = dados.get("total_aulas")
+
+    if not aluno_id or not materia or faltas is None or not total_aulas: #vai que...
+        return jsonify({"status": "erro", "mensagem": "Dados incompletos. Informe ID, matéria, faltas e total de aulas."}), 400
+
+    conexao = sqlite3.connect("universidade.db")
+    cursor = conexao.cursor()
+
+    try:
+        # Insere o registro de faltas na gaveta correta
+        cursor.execute(
+            "INSERT INTO faltas (aluno_id, materia, faltas, total_aulas) VALUES (?, ?, ?, ?)", 
+            (aluno_id, materia, faltas, total_aulas)
+        )
+        conexao.commit() #cadastrar info:
+        return jsonify({"status": "sucesso", "mensagem": f"Faltas cadastradas com sucesso para o aluno {aluno_id} em {materia}!"})
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": f"Erro ao cadastrar falta: {str(e)}"}), 500
+    finally:
+        conexao.close()
+#6-------------------------------------------------------------------
+#7-------------------------------------------------------------------
+@servidor.route("/logout", methods=["POST"])
+def logout():
+    # session.clear() apaga os cookies do login do navegador
+    session.clear()
+    return jsonify({"status": "sucesso", "mensagem": "Você saiu do modo professor e o sistema foi bloqueado novamente."})
+#7-------------------------------------------------------------------
 
 # Rota para resetar o histórico de conversa da sessão
 @servidor.route("/resetar", methods=["POST"])
@@ -249,4 +460,4 @@ if __name__ == "__main__": # Verifica se o script está sendo executado diretame
     tunnel = ngrok.connect(5000) # Cria o túnel ngrok apontando para a porta 5000 do Flask
     print(f"\nURL pública (ngrok): {tunnel.public_url}\n") # Exibe a URL pública gerada pelo ngrok no terminal
 
-    servidor.run(debug=True) # Inicia o servidor Flask em debugmode, o que permite detectar erros e recarregar automaticamente o servidor quando o código é alterado.
+    servidor.run(debug=True, use_reloader=False) # Inicia o servidor Flask em debugmode, o que permite detectar erros e recarregar automaticamente o servidor quando o código é alterado.

@@ -203,6 +203,10 @@
       <span class="chip" onclick="quickSend('Qual o horário da aula?')">Horário da aula</span>
       <span class="chip" onclick="quickSend('Quero calcular minha média')">Calcular média</span>
       <span class="chip" onclick="quickSend('Quero verificar minhas faltas')">Verificar faltas</span>
+      <span id="chip-login" class="chip" onclick="entrarComoProfessor()">Fazer login</span>
+      <span id="chip-cadastro" class="chip" onclick="cadastrarComoProfessor()" style="display: none;">Fazer cadastro</span>
+      <span id="chip-gerenciar" class="chip" onclick="gerenciarComoProfessor()" style="display: none;">Gerenciar alunos</span>
+      <span id="chip-sair" class="chip" onclick="sairModoProfessor()" style="display: none; border-color: #ff4444; color: #ff4444;">Sair</span>
     </div>
 
     <div class="messages" id="messages">
@@ -233,6 +237,157 @@
 </div>
 
 <script>
+  async function entrarComoProfessor() {
+    const usuario = prompt("Digite o nome de usuário do Professor:");
+    if (!usuario) return; 
+
+    const senha = prompt("Digite a senha:");
+    if (!senha) return;
+
+    try {
+        const resposta = await chamarFlask('/login', { username: usuario, senha: senha });
+        
+        if (resposta.status === 'sucesso') {
+            alert("Login feito com sucesso! Você agora é um Professor.");
+            
+            // esconde o botão de login
+            document.getElementById('chip-login').style.display = 'none';
+            
+            // revela novas opções
+            document.getElementById('chip-cadastro').style.display = 'inline-block';
+            document.getElementById('chip-gerenciar').style.display = 'inline-block';
+            document.getElementById('chip-sair').style.display = 'inline-block';
+        } else { // o erro mais fácil de pegar
+          alert("Usuário ou senha incorretos. Acesso negado.");
+        }
+    } catch (erro) {
+        alert("Erro de conexão: O servidor backend (projeto.py) parece estar desligado na porta 5050.");
+        console.error("Detalhes do erro para o programador ver no F12:", erro);
+    }
+}
+  //danise
+  async function cadastrarComoProfessor() {
+    const id = prompt("Digite o número de Matrícula (ID) do novo aluno:");
+    if (!id) return;
+
+    const nome = prompt("Digite o nome completo do aluno:");
+    if (!nome) return;
+
+    try {
+        const resposta = await chamarFlask('/cadastrar_aluno', { id: parseInt(id), nome: nome });
+        alert(resposta.mensagem);
+    } catch (erro) {
+        if (erro instanceof TypeError || !erro.status) {
+            alert("Erro de conexão: O servidor Flask parece estar desligado.");
+        } else {
+            alert("Falha ao registrar aluno. Certifique-se de que tem permissão de Professor.");
+        }
+    }
+}
+  
+  async function gerenciarComoProfessor() {
+    const opcao = prompt(
+        "O que deseja fazer?\n" +
+        "1 - Atualizar nome de um aluno\n" +
+        "2 - Excluir um aluno do sistema\n" +
+        "3 - Cadastrar nova nota para um aluno\n" +
+        "4 - VER RELATÓRIO GERAL DE ALUNOS\n" +
+        "5 - Cadastrar FALTAS para um aluno" 
+    );
+    
+    if (!opcao) return;
+
+    if (opcao === "1") {
+        const id = prompt("Digite o ID do aluno que deseja alterar:");
+        if (!id) return;
+        const novoNome = prompt("Digite o novo nome para este aluno:");
+        if (!novoNome) return;
+
+        const resposta = await chamarFlask('/atualizar_aluno', { id: parseInt(id), nome: novoNome });
+        alert(resposta.mensagem);
+
+    } else if (opcao === "2") {
+        const id = prompt("PERIGO: Digite o ID do aluno que deseja EXCLUIR permanentemente:");
+        if (!id) return;
+
+        const certeza = confirm("Tem certeza absoluta? Isso apagará todas as notas e faltas deste aluno!");
+        if (certeza) {
+            const resposta = await chamarFlask('/deletar_aluno', { id: parseInt(id) });
+            alert(resposta.mensagem);
+        }
+        
+    } else if (opcao === "3") {
+        const id = prompt("Digite o ID do aluno:");
+        if (!id) return;
+        
+        const materia = prompt("Digite o nome da matéria (ex: Matemática, Português):");
+        if (!materia) return;
+        
+        const notaStr = prompt("Digite a nota obtida (ex: 8.5):");
+        if (!notaStr) return;
+        
+        const notaNum = parseFloat(notaStr.replace(',', '.'));
+
+        const resposta = await chamarFlask('/cadastrar_nota', { 
+            aluno_id: parseInt(id), 
+            materia: materia, 
+            nota: notaNum 
+        });
+        alert(resposta.mensagem);
+
+    } else if (opcao === "4") {
+        try {
+            const resposta = await chamarFlask('/relatorio_geral', {});
+            if (resposta.status === 'sucesso') {
+                alert(resposta.relatorio);
+            } else {
+                alert(resposta.mensagem);
+            }
+        } catch (erro) {
+            alert("Erro ao buscar o relatório.");
+        }
+
+    } else if (opcao === "5") {
+        const id = prompt("Digite o ID do aluno:");
+        if (!id) return;
+        
+        const materia = prompt("Digite o nome da matéria (ex: Geografia, Física):");
+        if (!materia) return;
+        
+        const faltasStr = prompt("Quantas FALTAS o aluno teve nesta matéria?");
+        if (!faltasStr) return;
+
+        const totalAulasStr = prompt("Qual foi o TOTAL DE AULAS dadas nessa matéria no semestre?");
+        if (!totalAulasStr) return;
+        
+        const resposta = await chamarFlask('/cadastrar_falta', { 
+            aluno_id: parseInt(id), 
+            materia: materia, 
+            faltas: parseInt(faltasStr),
+            total_aulas: parseInt(totalAulasStr)
+        });
+        alert(resposta.mensagem);
+
+    } else {
+        alert("Opção inválida.");
+    }
+} 
+
+  async function sairModoProfessor() {
+    try {
+        const resposta = await chamarFlask('/logout', {}); //python ref
+        alert(resposta.mensagem);
+        
+        // esconde tudo e passa a exibir apenas "login"
+        document.getElementById('chip-login').style.display = 'inline-block';
+        document.getElementById('chip-cadastro').style.display = 'none';
+        document.getElementById('chip-gerenciar').style.display = 'none';
+        document.getElementById('chip-sair').style.display = 'none';
+    } catch (erro) {
+        alert("Erro ao tentar sair.");
+    }
+}//fim do danise
+
   const messagesEl = document.getElementById('messages');
   const inputEl    = document.getElementById('input');
   const sendBtn    = document.getElementById('send-btn');

@@ -3,18 +3,23 @@ import sqlite3
 conn = sqlite3.connect("universidade.db")
 cursor = conn.cursor()
 
+# ATENÇÃO: Ativa o suporte a chaves estrangeiras no SQLite
+cursor.execute("PRAGMA foreign_keys = ON;")
+
 cursor.executescript("""
+    DROP TABLE IF EXISTS notas; -- Remove a tabela antiga
+
     CREATE TABLE IF NOT EXISTS alunos (
         id INTEGER PRIMARY KEY,
         nome TEXT
     );
 
     CREATE TABLE IF NOT EXISTS notas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         aluno_id INTEGER,
         materia TEXT,
         nota REAL,
-        PRIMARY KEY (aluno_id, materia, nota),
-        FOREIGN KEY (aluno_id) REFERENCES alunos(id)
+        FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS faltas (
@@ -23,7 +28,14 @@ cursor.executescript("""
         faltas INTEGER,
         total_aulas INTEGER,
         PRIMARY KEY (aluno_id, materia),
-        FOREIGN KEY (aluno_id) REFERENCES alunos(id)
+        FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        senha TEXT,
+        tipo TEXT -- se é 'professor' ou 'aluno'
     );
 
     CREATE TABLE IF NOT EXISTS provas (
@@ -32,22 +44,25 @@ cursor.executescript("""
         data TEXT,
         conteudo TEXT,
         PRIMARY KEY (aluno_id, materia),
-        FOREIGN KEY (aluno_id) REFERENCES alunos(id)
+        FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE
     );
     
-    CREATE TABLE historico (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    aluno_id INTEGER,
-    role TEXT,
-    conteudo TEXT,
-    data_hora DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-                     """)
+    CREATE TABLE IF NOT EXISTS historico (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        aluno_id INTEGER,
+        role TEXT,
+        conteudo TEXT,
+        data_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE
+    );
+""")
 
 # Dados de teste
+cursor.execute("INSERT OR IGNORE INTO usuarios (username, senha, tipo) VALUES ('professor1', 'senha123', 'professor')")
 cursor.execute("INSERT OR IGNORE INTO alunos VALUES (1, 'Carlos')")
 
-cursor.executemany("INSERT OR IGNORE INTO notas (aluno_id, materia, nota) VALUES (?,?,?)", [
+# Inserção de notas simplificada sem o risco de duplicidade de chaves
+cursor.executemany("INSERT INTO notas (aluno_id, materia, nota) VALUES (?,?,?)", [
     (1, "Matemática", 7.5),
     (1, "Matemática", 8.0),
     (1, "Matemática", 5.5),
@@ -73,4 +88,4 @@ cursor.executemany("INSERT OR IGNORE INTO provas (aluno_id, materia, data, conte
 
 conn.commit()
 conn.close()
-print("Banco criado com sucesso!")
+print("Feito!")
