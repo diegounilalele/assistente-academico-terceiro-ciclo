@@ -445,6 +445,39 @@ def logout():
     return jsonify({"status": "sucesso", "mensagem": "Você saiu do modo professor e o sistema foi bloqueado novamente."})
 #7-------------------------------------------------------------------
 
+# Rota que expõe os dados do aluno ao frontend (HTML)
+@servidor.route("/dados_aluno", methods=["GET"])
+def dados_aluno_route():
+    dados = buscar_dados_aluno(aluno_id)
+    if not dados:
+        return jsonify({"status": "erro", "mensagem": "Aluno não encontrado."}), 404
+
+    # Busca também as notas individuais para exibir no Desempenho
+    conexao = sqlite3.connect("universidade.db")
+    cursor = conexao.cursor()
+    cursor.execute(
+        "SELECT materia, nota FROM notas WHERE aluno_id = ? ORDER BY materia, id",
+        (aluno_id,)
+    )
+    notas_raw = cursor.fetchall()
+    conexao.close()
+
+    notas_por_materia = {}
+    for materia, nota in notas_raw:
+        notas_por_materia.setdefault(materia, []).append(nota)
+
+    return jsonify({
+        "status": "sucesso",
+        "nome": dados["nome"],
+        "medias": dados["medias"],
+        "faltas": dados["faltas"],
+        "provas": dados["provas"],
+        "necessario_para_passar": dados["necessario_para_passar"],
+        "alertas_faltas": dados["alertas_faltas"],
+        "notas_por_materia": notas_por_materia
+    })
+
+
 # Rota para resetar o histórico de conversa da sessão
 @servidor.route("/resetar", methods=["POST"])
 def resetar():
@@ -453,11 +486,19 @@ def resetar():
     return jsonify({"status": "ok", "mensagem": "Histórico resetado."})
 
 
-if __name__ == "__main__": # Verifica se o script está sendo executado diretamente (em vez de importado como um módulo) e, se for o caso, inicia o servidor Flask em modo de depuração (debug=True)
-    if NGROK_TOKEN: # Se o token do ngrok estiver definido no .env, autentica para ter URL fixa
-        ngrok.set_auth_token(NGROK_TOKEN)
+if __name__ == "__main__":
+    usar_ngrok = os.getenv("USAR_NGROK", "false").lower() == "true"
 
-    tunnel = ngrok.connect(5000) # Cria o túnel ngrok apontando para a porta 5000 do Flask
-    print(f"\nURL pública (ngrok): {tunnel.public_url}\n") # Exibe a URL pública gerada pelo ngrok no terminal
+    if usar_ngrok:
+        if NGROK_TOKEN:
+            ngrok.set_auth_token(NGROK_TOKEN)
+        try:
+            ngrok.kill() # Fecha túneis anteriores antes de abrir um novo
+            tunnel = ngrok.connect(5000)
+            print(f"\nURL pública (ngrok): {tunnel.public_url}\n")
+        except Exception as e:
+            print(f"\nAviso: ngrok falhou ({e}). Rodando só local.\n")
+    else:
+        print("\nServidor local: http://localhost:5000\n")
 
-    servidor.run(debug=True, use_reloader=False) # Inicia o servidor Flask em debugmode, o que permite detectar erros e recarregar automaticamente o servidor quando o código é alterado.
+    servidor.run(debug=True, use_reloader=False)

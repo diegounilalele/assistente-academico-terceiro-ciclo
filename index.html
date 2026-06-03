@@ -216,7 +216,6 @@
       overflow: hidden;
     }
 
-    /* ── PAGE VIEWS (shared) ── */
     .page-view {
       display: none;
       flex: 1;
@@ -249,7 +248,6 @@
       color: var(--text-muted);
     }
 
-    /* ── GRID CARDS ── */
     .cards-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -889,14 +887,155 @@
       text-align: center; font-size: 11px;
       color: var(--text-muted); margin-top: 10px; font-weight: 300;
     }
+
+    /* ── LOGIN ── */
+    /* Enquanto o body tiver a classe "deslogado", o app some e só a tela de login aparece */
+    body.deslogado .sidebar,
+    body.deslogado .main { display: none; }
+
+    #login-screen { display: none; }
+    body.deslogado #login-screen {
+      display: flex;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      padding: 20px;
+    }
+    body.deslogado #login-screen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 30% 20%, rgba(74,85,104,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 70% 80%, rgba(107,114,128,0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .login-card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 360px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 36px 30px 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+
+    .login-logo {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 4px;
+    }
+
+    .login-card h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text);
+      text-align: center;
+    }
+    .login-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: -10px;
+      margin-bottom: 6px;
+    }
+
+    .login-field { display: flex; flex-direction: column; gap: 6px; }
+    .login-field label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+    .login-field input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .login-field input:focus { border-color: var(--accent); }
+    .login-field input::placeholder { color: var(--text-muted); }
+
+    .login-error {
+      font-size: 12.5px;
+      color: #f87171;
+      min-height: 16px;
+      text-align: center;
+    }
+
+    .login-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: white;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .login-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .login-hint {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 2px;
+    }
+    .login-hint strong { color: var(--text); font-weight: 500; }
   </style>
 </head>
-<body>
+<body class="deslogado">
+
+<!-- TELA DE LOGIN -->
+<div id="login-screen">
+  <form class="login-card" onsubmit="fazerLogin(event)">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="26" height="26"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+    </div>
+    <h1>Assistente Acadêmico</h1>
+    <p class="login-sub">Entre para acessar seu painel</p>
+
+    <div class="login-field">
+      <label for="login-user">Usuário</label>
+      <input id="login-user" type="text" autocomplete="username" placeholder="ex: carlos">
+    </div>
+    <div class="login-field">
+      <label for="login-pass">Senha</label>
+      <input id="login-pass" type="password" autocomplete="current-password" placeholder="••••••••">
+    </div>
+
+    <div class="login-error" id="login-error"></div>
+    <button class="login-btn" type="submit" id="login-btn">Entrar</button>
+    <p class="login-hint">Demonstração: <strong>carlos</strong> / <strong>senha123</strong></p>
+  </form>
+</div>
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-icon">🎓</div>
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="18" height="18"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+    </div>
     <span>Acadêmico</span>
   </div>
 
@@ -949,11 +1088,17 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
       Configurações
     </div>
+    <div class="sidebar-item" id="nav-sair" onclick="fazerLogout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sair
+    </div>
     <div class="sidebar-user">
-      <div class="user-avatar">👤</div>
+      <div class="user-avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
       <div class="user-info">
         <div class="user-name" id="display-name">Usuário</div>
-        <div class="user-role">Estudante</div>
+        <div class="user-role" id="user-role-label">Estudante</div>
       </div>
     </div>
   </div>
@@ -1012,53 +1157,7 @@
       <h2>Início</h2>
       <p>Resumo do seu desempenho acadêmico</p>
     </div>
-    <div class="cards-grid">
-      <div class="stat-card">
-        <div class="card-icon">📊</div>
-        <div class="card-label">Média Geral</div>
-        <div class="card-value">7.4</div>
-        <div class="card-sub">↑ +0.3 este mês</div>
-      </div>
-      <div class="stat-card">
-        <div class="card-icon">✅</div>
-        <div class="card-label">Frequência</div>
-        <div class="card-value">84%</div>
-        <div class="card-sub">↓ 2 faltas esta semana</div>
-      </div>
-      <div class="stat-card">
-        <div class="card-icon">📅</div>
-        <div class="card-label">Próxima Prova</div>
-        <div class="card-value" style="font-size:18px;">10 Jun</div>
-        <div class="card-sub">Cálculo II</div>
-      </div>
-      <div class="stat-card">
-        <div class="card-icon">📚</div>
-        <div class="card-label">Disciplinas</div>
-        <div class="card-value">6</div>
-        <div class="card-sub">2 com atenção necessária</div>
-      </div>
-    </div>
-    <div class="table-wrap">
-      <div class="table-title">Situação por Disciplina</div>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Disciplina</th>
-            <th>Média</th>
-            <th>Frequência</th>
-            <th>Situação</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>Algoritmos</td><td>8.5</td><td>90%</td><td><span class="badge-status ok">Aprovado</span></td></tr>
-          <tr><td>Cálculo II</td><td>5.2</td><td>80%</td><td><span class="badge-status warn">Atenção</span></td></tr>
-          <tr><td>Banco de Dados</td><td>9.0</td><td>95%</td><td><span class="badge-status ok">Aprovado</span></td></tr>
-          <tr><td>Eng. de Software</td><td>7.8</td><td>85%</td><td><span class="badge-status ok">Aprovado</span></td></tr>
-          <tr><td>Redes</td><td>4.5</td><td>72%</td><td><span class="badge-status bad">Reprovando</span></td></tr>
-          <tr><td>P.O.O.</td><td>8.1</td><td>88%</td><td><span class="badge-status ok">Aprovado</span></td></tr>
-        </tbody>
-      </table>
-    </div>
+    <div id="inicio-content"><p style="color:var(--text-muted);font-size:13px;">Carregando dados...</p></div>
   </div>
 
   <!-- ── CALENDÁRIO ── -->
@@ -1080,27 +1179,8 @@
     <div class="page-header" style="margin-bottom:16px;">
       <h2 style="font-size:16px;">Próximos Eventos</h2>
     </div>
-    <div class="events-list">
-      <div class="event-item">
-        <div class="event-date-box"><div class="day">10</div><div class="month">Jun</div></div>
-        <div class="event-info"><div class="title">Prova — Cálculo II</div><div class="sub">Sala 204 · 08h00</div></div>
-        <span class="event-tag">Prova</span>
-      </div>
-      <div class="event-item">
-        <div class="event-date-box"><div class="day">13</div><div class="month">Jun</div></div>
-        <div class="event-info"><div class="title">Entrega — Projeto de Redes</div><div class="sub">Via portal acadêmico · 23h59</div></div>
-        <span class="event-tag">Trabalho</span>
-      </div>
-      <div class="event-item">
-        <div class="event-date-box"><div class="day">18</div><div class="month">Jun</div></div>
-        <div class="event-info"><div class="title">Prova — Banco de Dados</div><div class="sub">Sala 101 · 10h00</div></div>
-        <span class="event-tag">Prova</span>
-      </div>
-      <div class="event-item">
-        <div class="event-date-box"><div class="day">25</div><div class="month">Jun</div></div>
-        <div class="event-info"><div class="title">Apresentação — Eng. de Software</div><div class="sub">Auditório · 14h00</div></div>
-        <span class="event-tag">Apresentação</span>
-      </div>
+    <div class="events-list" id="eventos-content">
+      <p style="color:var(--text-muted);font-size:13px;">Carregando eventos...</p>
     </div>
   </div>
 
@@ -1142,69 +1222,7 @@
       <h2>Desempenho</h2>
       <p>Suas notas e médias por disciplina</p>
     </div>
-    <div class="table-wrap">
-      <div class="table-title">Notas por Disciplina</div>
-      <table class="data-table">
-        <thead>
-          <tr><th>Disciplina</th><th>P1</th><th>P2</th><th>Trab.</th><th>Média</th><th>Situação</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Algoritmos</td><td>8.0</td><td>9.0</td><td>8.5</td><td><strong>8.5</strong></td>
-            <td><span class="badge-status ok">Aprovado</span></td>
-          </tr>
-          <tr>
-            <td>Cálculo II</td><td>4.5</td><td>5.8</td><td>6.0</td><td><strong>5.2</strong></td>
-            <td><span class="badge-status warn">Recuperação</span></td>
-          </tr>
-          <tr>
-            <td>Banco de Dados</td><td>9.5</td><td>8.5</td><td>9.0</td><td><strong>9.0</strong></td>
-            <td><span class="badge-status ok">Aprovado</span></td>
-          </tr>
-          <tr>
-            <td>Eng. de Software</td><td>7.0</td><td>8.5</td><td>8.0</td><td><strong>7.8</strong></td>
-            <td><span class="badge-status ok">Aprovado</span></td>
-          </tr>
-          <tr>
-            <td>Redes</td><td>3.5</td><td>5.5</td><td>4.5</td><td><strong>4.5</strong></td>
-            <td><span class="badge-status bad">Reprovando</span></td>
-          </tr>
-          <tr>
-            <td>P.O.O.</td><td>8.0</td><td>8.0</td><td>8.5</td><td><strong>8.1</strong></td>
-            <td><span class="badge-status ok">Aprovado</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;">
-      <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:16px;">Progresso por Disciplina</div>
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Algoritmos</span><span>8.5 / 10</span></div>
-          <div class="progress-bar"><div class="progress-bar-fill" style="width:85%"></div></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Cálculo II</span><span>5.2 / 10</span></div>
-          <div class="progress-bar"><div class="progress-bar-fill warn" style="width:52%;background:linear-gradient(90deg,#fbbf24,#f59e0b)"></div></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Banco de Dados</span><span>9.0 / 10</span></div>
-          <div class="progress-bar"><div class="progress-bar-fill" style="width:90%"></div></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Eng. de Software</span><span>7.8 / 10</span></div>
-          <div class="progress-bar"><div class="progress-bar-fill" style="width:78%"></div></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Redes</span><span>4.5 / 10</span></div>
-          <div class="progress-bar"><div class="progress-bar-fill bad" style="width:45%"></div></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>P.O.O.</span><span>8.1 / 10</span></div>
-          <div class="progress-bar"><div class="progress-bar-fill" style="width:81%"></div></div>
-        </div>
-      </div>
-    </div>
+    <div id="desempenho-content"><p style="color:var(--text-muted);font-size:13px;">Carregando dados...</p></div>
   </div>
 
   <!-- ── FREQUÊNCIA ── -->
@@ -1213,73 +1231,7 @@
       <h2>Frequência</h2>
       <p>Controle de presença por disciplina</p>
     </div>
-    <div class="cards-grid">
-      <div class="stat-card">
-        <div class="card-icon">✅</div>
-        <div class="card-label">Frequência Geral</div>
-        <div class="card-value">84%</div>
-        <div class="card-sub">Acima do mínimo (75%)</div>
-      </div>
-      <div class="stat-card">
-        <div class="card-icon">❌</div>
-        <div class="card-label">Total de Faltas</div>
-        <div class="card-value">18</div>
-        <div class="card-sub">Em todas as disciplinas</div>
-      </div>
-      <div class="stat-card">
-        <div class="card-icon">⚠️</div>
-        <div class="card-label">Em Risco</div>
-        <div class="card-value">1</div>
-        <div class="card-sub">Redes — 72%</div>
-      </div>
-    </div>
-    <div class="table-wrap">
-      <div class="table-title">Detalhamento por Disciplina</div>
-      <table class="data-table">
-        <thead>
-          <tr><th>Disciplina</th><th>Aulas</th><th>Presenças</th><th>Faltas</th><th>%</th><th>Situação</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Algoritmos</td><td>40</td><td>36</td><td>4</td><td>90%</td>
-            <td><span class="badge-status ok">Regular</span></td>
-          </tr>
-          <tr>
-            <td>Cálculo II</td><td>40</td><td>32</td><td>8</td><td>80%</td>
-            <td><span class="badge-status ok">Regular</span></td>
-          </tr>
-          <tr>
-            <td>Banco de Dados</td><td>40</td><td>38</td><td>2</td><td>95%</td>
-            <td><span class="badge-status ok">Regular</span></td>
-          </tr>
-          <tr>
-            <td>Eng. de Software</td><td>40</td><td>34</td><td>6</td><td>85%</td>
-            <td><span class="badge-status ok">Regular</span></td>
-          </tr>
-          <tr>
-            <td>Redes</td><td>40</td><td>29</td><td>11</td><td>72%</td>
-            <td><span class="badge-status bad">Em Risco</span></td>
-          </tr>
-          <tr>
-            <td>P.O.O.</td><td>40</td><td>35</td><td>5</td><td>88%</td>
-            <td><span class="badge-status ok">Regular</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;">
-      <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:16px;">Faltas disponíveis até o limite (25%)</div>
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Algoritmos</span><span>6 faltas restantes</span></div>
-          <div class="progress-bar"><div class="progress-bar-fill" style="width:40%"></div></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;"><span>Redes</span><span>0 faltas restantes</span></div>
-          <div class="progress-bar"><div class="progress-bar-fill bad" style="width:100%"></div></div>
-        </div>
-      </div>
-    </div>
+    <div id="frequencia-content"><p style="color:var(--text-muted);font-size:13px;">Carregando dados...</p></div>
   </div>
 
   <!-- ── DISCIPLINAS ── -->
@@ -1288,74 +1240,7 @@
       <h2>Disciplinas</h2>
       <p>Matérias do semestre atual</p>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
-      <div class="stat-card" style="padding:20px 22px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">💻</div>
-          <div><div style="font-size:14px;color:var(--text);font-weight:500;">Algoritmos</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. Carlos Melo</div></div>
-        </div>
-        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
-          <span>📅 Seg / Qua — 08h00 às 09h40</span>
-          <span>🏫 Sala 304</span>
-          <span>📊 Média: <strong style="color:var(--text);">8.5</strong></span>
-        </div>
-      </div>
-      <div class="stat-card" style="padding:20px 22px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">📐</div>
-          <div><div style="font-size:14px;color:var(--text);font-weight:500;">Cálculo II</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. Ana Lima</div></div>
-        </div>
-        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
-          <span>📅 Ter / Qui — 10h00 às 11h40</span>
-          <span>🏫 Sala 201</span>
-          <span>📊 Média: <strong style="color:#fbbf24;">5.2</strong></span>
-        </div>
-      </div>
-      <div class="stat-card" style="padding:20px 22px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">🗄️</div>
-          <div><div style="font-size:14px;color:var(--text);font-weight:500;">Banco de Dados</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. Ricardo Souza</div></div>
-        </div>
-        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
-          <span>📅 Seg / Sex — 14h00 às 15h40</span>
-          <span>🏫 Lab 02</span>
-          <span>📊 Média: <strong style="color:var(--text);">9.0</strong></span>
-        </div>
-      </div>
-      <div class="stat-card" style="padding:20px 22px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">⚙️</div>
-          <div><div style="font-size:14px;color:var(--text);font-weight:500;">Eng. de Software</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. Fernanda Alves</div></div>
-        </div>
-        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
-          <span>📅 Qua / Sex — 08h00 às 09h40</span>
-          <span>🏫 Sala 105</span>
-          <span>📊 Média: <strong style="color:var(--text);">7.8</strong></span>
-        </div>
-      </div>
-      <div class="stat-card" style="padding:20px 22px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">🌐</div>
-          <div><div style="font-size:14px;color:var(--text);font-weight:500;">Redes</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. João Batista</div></div>
-        </div>
-        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
-          <span>📅 Ter / Qui — 08h00 às 09h40</span>
-          <span>🏫 Lab 01</span>
-          <span>📊 Média: <strong style="color:#f87171;">4.5</strong></span>
-        </div>
-      </div>
-      <div class="stat-card" style="padding:20px 22px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-          <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">🧩</div>
-          <div><div style="font-size:14px;color:var(--text);font-weight:500;">P.O.O.</div><div style="font-size:11.5px;color:var(--text-muted);">Prof. Mariana Costa</div></div>
-        </div>
-        <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
-          <span>📅 Seg / Qua — 10h00 às 11h40</span>
-          <span>🏫 Lab 03</span>
-          <span>📊 Média: <strong style="color:var(--text);">8.1</strong></span>
-        </div>
-      </div>
-    </div>
+    <div id="disciplinas-content"><p style="color:var(--text-muted);font-size:13px;">Carregando dados...</p></div>
   </div>
 
   <!-- ── CONFIGURAÇÕES ── -->
@@ -1464,9 +1349,320 @@
     showView('assistente');
   }
 
+  // ── LOGIN / SESSÃO ──
+
+  // Envia usuário e senha para o Flask validar
+  async function fazerLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('login-user').value.trim();
+    const senha = document.getElementById('login-pass').value;
+    const errEl = document.getElementById('login-error');
+    const btn = document.getElementById('login-btn');
+    errEl.textContent = '';
+
+    if (!username || !senha) { errEl.textContent = 'Preencha usuário e senha.'; return; }
+
+    btn.disabled = true; btn.textContent = 'Entrando...';
+    try {
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, senha })
+      });
+      const data = await res.json();
+      if (data.status === 'sucesso') {
+        entrarNoApp(data);
+      } else {
+        errEl.textContent = data.mensagem || 'Falha no login.';
+      }
+    } catch (err) {
+      errEl.textContent = 'Servidor indisponível. O Flask está rodando?';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Entrar';
+    }
+  }
+
+  // Mostra o app e carrega os dados depois do login bem-sucedido
+  function entrarNoApp(sessao) {
+    document.body.classList.remove('deslogado');
+    if (sessao && sessao.username) {
+      document.getElementById('display-name').textContent = sessao.username;
+      document.getElementById('user-role-label').textContent =
+        sessao.tipo === 'professor' ? 'Professor' : 'Estudante';
+    }
+    carregarDados();
+  }
+
+  // Ao abrir a página, verifica se já existe uma sessão ativa (evita relogar no F5)
+  async function checarSessao() {
+    try {
+      const res = await fetch('/sessao');
+      const data = await res.json();
+      if (data.logado) entrarNoApp({ username: data.username, tipo: data.tipo });
+    } catch (e) {
+      // Flask offline: permanece na tela de login
+    }
+  }
+
+  // Sai do sistema e volta para a tela de login
+  async function fazerLogout() {
+    try { await fetch('/logout', { method: 'POST' }); } catch (e) {}
+    dadosAluno = null;
+    document.body.classList.add('deslogado');
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-error').textContent = '';
+  }
+
+  // ── DADOS DO BANCO ──
+  let dadosAluno = null;
+
+  async function carregarDados() {
+    try {
+      const res = await fetch('/dados_aluno');
+      const json = await res.json();
+      if (json.status !== 'sucesso') return;
+      dadosAluno = json;
+      aplicarDados();
+    } catch (e) {
+      console.warn('Flask não disponível, mantendo dados estáticos.');
+    }
+  }
+
+  function aplicarDados() {
+    if (!dadosAluno) return;
+    // Preenche o nome do aluno no campo de configurações (a sidebar mostra o login)
+    const cfgNome = document.getElementById('cfg-nome');
+    if (cfgNome) cfgNome.value = dadosAluno.nome;
+
+    renderInicio();
+    renderDesempenho();
+    renderFrequencia();
+    renderEventos();
+    renderDisciplinas();
+  }
+
+  // ── FUNÇÕES DE RENDER ──
+
+  function badgeSituacao(media, situacaoFaltas) {
+    if (situacaoFaltas === 'Reprovado por falta') return '<span class="badge-status bad">Reprov. Falta</span>';
+    if (media >= 6)  return '<span class="badge-status ok">Aprovado</span>';
+    if (media >= 4)  return '<span class="badge-status warn">Recuperação</span>';
+    return '<span class="badge-status bad">Reprovando</span>';
+  }
+
+  function corMedia(media) {
+    if (media >= 6) return 'var(--text)';
+    if (media >= 4) return '#fbbf24';
+    return '#f87171';
+  }
+
+  function corBarra(media) {
+    if (media >= 6) return 'linear-gradient(90deg,var(--accent),var(--accent2))';
+    if (media >= 4) return 'linear-gradient(90deg,#fbbf24,#f59e0b)';
+    return 'linear-gradient(90deg,#f87171,#ef4444)';
+  }
+
+  function renderInicio() {
+    const d = dadosAluno;
+    const materias = Object.keys(d.medias);
+    const todasMedias = Object.values(d.medias);
+    const mediaGeral = todasMedias.length ? (todasMedias.reduce((a,b)=>a+b,0)/todasMedias.length).toFixed(1) : '-';
+
+    // Frequência geral
+    let totalFaltas = 0, totalAulas = 0;
+    Object.values(d.faltas).forEach(f => { totalFaltas += f.faltas; totalAulas += f.total; });
+    const freqGeral = totalAulas ? Math.round(((totalAulas - totalFaltas) / totalAulas) * 100) : '-';
+
+    // Próxima prova
+    const proxProva = d.provas.sort((a,b) => a.data.localeCompare(b.data))[0];
+    let proxProvaHtml = '<div class="card-value" style="font-size:18px;">—</div><div class="card-sub">Nenhuma agendada</div>';
+    if (proxProva) {
+      const dt = new Date(proxProva.data + 'T00:00:00');
+      const dia = dt.getDate(), mes = dt.toLocaleString('pt-BR',{month:'short'});
+      proxProvaHtml = `<div class="card-value" style="font-size:18px;">${dia} ${mes}</div><div class="card-sub">${proxProva.materia}</div>`;
+    }
+
+    // Em atenção
+    const emAtencao = materias.filter(m => d.medias[m] < 6 || (d.faltas[m] && d.faltas[m].situacao === 'Reprovado por falta')).length;
+
+    const linhasSituacao = materias.map(m => {
+      const media = d.medias[m].toFixed(1);
+      const fInfo = d.faltas[m];
+      const freq = fInfo ? Math.round(((fInfo.total - fInfo.faltas) / fInfo.total)*100) + '%' : '—';
+      const sit = badgeSituacao(d.medias[m], fInfo ? fInfo.situacao : 'ok');
+      return `<tr><td>${m}</td><td>${media}</td><td>${freq}</td><td>${sit}</td></tr>`;
+    }).join('');
+
+    document.getElementById('inicio-content').innerHTML = `
+      <div class="cards-grid">
+        <div class="stat-card"><div class="card-label">Média Geral</div><div class="card-value">${mediaGeral}</div><div class="card-sub">${materias.length} disciplina(s)</div></div>
+        <div class="stat-card"><div class="card-label">Frequência Geral</div><div class="card-value">${freqGeral}%</div><div class="card-sub">${totalFaltas} falta(s) no total</div></div>
+        <div class="stat-card"><div class="card-label">Próxima Prova</div>${proxProvaHtml}</div>
+        <div class="stat-card"><div class="card-label">Disciplinas</div><div class="card-value">${materias.length}</div><div class="card-sub">${emAtencao} com atenção necessária</div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-title">Situação por Disciplina</div>
+        <table class="data-table">
+          <thead><tr><th>Disciplina</th><th>Média</th><th>Frequência</th><th>Situação</th></tr></thead>
+          <tbody>${linhasSituacao}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function renderDesempenho() {
+    const d = dadosAluno;
+    const materias = Object.keys(d.notas_por_materia);
+
+    const linhas = materias.map(m => {
+      const notas = d.notas_por_materia[m];
+      const media = d.medias[m] ? d.medias[m].toFixed(1) : '—';
+      const fInfo = d.faltas[m];
+      const sit = badgeSituacao(d.medias[m] || 0, fInfo ? fInfo.situacao : 'ok');
+      const celulasNotas = notas.map(n => `<td>${n}</td>`).join('');
+      return `<tr><td>${m}</td>${celulasNotas}<td><strong style="color:${corMedia(d.medias[m]||0)}">${media}</strong></td><td>${sit}</td></tr>`;
+    }).join('');
+
+    const barras = materias.map(m => {
+      const media = d.medias[m] || 0;
+      const pct = Math.min(media * 10, 100).toFixed(0);
+      return `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;">
+            <span>${m}</span><span>${media.toFixed(1)} / 10</span>
+          </div>
+          <div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%;background:${corBarra(media)}"></div></div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('desempenho-content').innerHTML = `
+      <div class="table-wrap" style="margin-bottom:20px;">
+        <div class="table-title">Notas por Disciplina</div>
+        <table class="data-table">
+          <thead><tr><th>Disciplina</th><th>Notas lançadas</th><th>Média</th><th>Situação</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;">
+        <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:16px;">Progresso por Disciplina</div>
+        <div style="display:flex;flex-direction:column;gap:14px;">${barras}</div>
+      </div>`;
+  }
+
+  function renderFrequencia() {
+    const d = dadosAluno;
+    const faltas = d.faltas;
+    const materias = Object.keys(faltas);
+
+    let totalFaltas = 0, totalAulas = 0, emRisco = [];
+    materias.forEach(m => {
+      totalFaltas += faltas[m].faltas;
+      totalAulas  += faltas[m].total;
+      if (faltas[m].situacao === 'Reprovado por falta') emRisco.push(m);
+    });
+    const freqGeral = totalAulas ? Math.round(((totalAulas - totalFaltas) / totalAulas)*100) : 0;
+
+    const linhas = materias.map(m => {
+      const f = faltas[m];
+      const presencas = f.total - f.faltas;
+      const isRisco = f.situacao === 'Reprovado por falta';
+      const pct = f.percentual;
+      const badge = isRisco ? '<span class="badge-status bad">Reprovado</span>'
+                  : pct >= 20 ? '<span class="badge-status warn">Atenção</span>'
+                  : '<span class="badge-status ok">Regular</span>';
+      return `<tr><td>${m}</td><td>${f.total}</td><td>${presencas}</td><td>${f.faltas}</td><td>${(100-pct).toFixed(0)}%</td><td>${badge}</td></tr>`;
+    }).join('');
+
+    const limite = 0.25;
+    const barras = materias.map(m => {
+      const f = faltas[m];
+      const maxFaltas = Math.floor(f.total * limite);
+      const usadas = Math.min(f.faltas / maxFaltas, 1) * 100;
+      const restantes = Math.max(maxFaltas - f.faltas, 0);
+      const cor = f.faltas > maxFaltas ? 'linear-gradient(90deg,#f87171,#ef4444)' : 'linear-gradient(90deg,var(--accent),var(--accent2))';
+      return `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;">
+            <span>${m}</span><span>${restantes} falta(s) restante(s)</span>
+          </div>
+          <div class="progress-bar"><div class="progress-bar-fill" style="width:${usadas.toFixed(0)}%;background:${cor}"></div></div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('frequencia-content').innerHTML = `
+      <div class="cards-grid">
+        <div class="stat-card"><div class="card-label">Frequência Geral</div><div class="card-value">${freqGeral}%</div><div class="card-sub">${freqGeral>=75?'Acima do mínimo (75%)':'Abaixo do mínimo!'}</div></div>
+        <div class="stat-card"><div class="card-label">Total de Faltas</div><div class="card-value">${totalFaltas}</div><div class="card-sub">Em todas as disciplinas</div></div>
+        <div class="stat-card"><div class="card-label">Em Risco</div><div class="card-value">${emRisco.length}</div><div class="card-sub">${emRisco.length?emRisco.join(', '):'Nenhuma'}</div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-title">Detalhamento por Disciplina</div>
+        <table class="data-table">
+          <thead><tr><th>Disciplina</th><th>Aulas</th><th>Presenças</th><th>Faltas</th><th>Freq.</th><th>Situação</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;">
+        <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:16px;">Uso do limite de faltas (25%)</div>
+        <div style="display:flex;flex-direction:column;gap:14px;">${barras}</div>
+      </div>`;
+  }
+
+  function renderEventos() {
+    const provas = dadosAluno.provas;
+    const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    if (!provas.length) {
+      document.getElementById('eventos-content').innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Nenhuma prova agendada.</p>';
+      return;
+    }
+    const sorted = [...provas].sort((a,b) => a.data.localeCompare(b.data));
+    const html = sorted.map(p => {
+      const dt = new Date(p.data + 'T00:00:00');
+      return `
+        <div class="event-item">
+          <div class="event-date-box"><div class="day">${dt.getDate()}</div><div class="month">${meses[dt.getMonth()]}</div></div>
+          <div class="event-info"><div class="title">Prova — ${p.materia}</div><div class="sub">${p.conteudo}</div></div>
+          <span class="event-tag">Prova</span>
+        </div>`;
+    }).join('');
+    document.getElementById('eventos-content').innerHTML = html;
+
+    // Atualiza dias marcados no calendário
+    provasDias = sorted.map(p => new Date(p.data + 'T00:00:00'));
+    renderCalendar();
+  }
+
+  function renderDisciplinas() {
+    const d = dadosAluno;
+    const materias = Object.keys(d.medias);
+    const iconeSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="2" width="18" height="18"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`;
+
+    const cards = materias.map(m => {
+      const media = d.medias[m].toFixed(1);
+      const fInfo = d.faltas[m];
+      const freq = fInfo ? Math.round(((fInfo.total - fInfo.faltas) / fInfo.total)*100) + '%' : '—';
+      const nec = d.necessario_para_passar[m];
+      const necTxt = nec === 'Média atingida' ? 'Média atingida' : `Precisa de ${nec} para passar`;
+      return `
+        <div class="stat-card" style="padding:20px 22px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;">${iconeSVG}</div>
+            <div><div style="font-size:14px;color:var(--text);font-weight:500;">${m}</div></div>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
+            <span>Média: <strong style="color:${corMedia(d.medias[m])};">${media}</strong></span>
+            <span>Frequência: <strong style="color:var(--text);">${freq}</strong></span>
+            <span style="font-size:11px;">${necTxt}</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('disciplinas-content').innerHTML =
+      `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">${cards}</div>`;
+  }
+
   // ── CALENDÁRIO ──
-  let calDate = new Date(2026, 5, 1); // Junho 2026
-  const eventDays = [10, 13, 18, 25];
+  let calDate = new Date();
+  let provasDias = [];
 
   function renderCalendar() {
     const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -1481,7 +1677,7 @@
     for (let i = 0; i < firstDay; i++) html += `<div class="cal-day empty"></div>`;
     for (let d = 1; d <= daysInMonth; d++) {
       const isToday = d === today.getDate() && calDate.getMonth() === today.getMonth() && calDate.getFullYear() === today.getFullYear();
-      const hasEvent = eventDays.includes(d) && calDate.getMonth() === 5 && calDate.getFullYear() === 2026;
+      const hasEvent = provasDias.some(dt => dt.getDate() === d && dt.getMonth() === calDate.getMonth() && dt.getFullYear() === calDate.getFullYear());
       html += `<div class="cal-day${isToday ? ' today' : ''}${hasEvent ? ' has-event' : ''}">${d}</div>`;
     }
     grid.innerHTML = html;
@@ -1554,7 +1750,7 @@
     if (nome) document.getElementById('display-name').textContent = nome;
     const btn = document.querySelector('.btn-config-save');
     const orig = btn.textContent;
-    btn.textContent = '✓ Salvo!';
+    btn.textContent = 'Salvo!';
     btn.style.opacity = '0.7';
     setTimeout(() => { btn.textContent = orig; btn.style.opacity = ''; }, 1800);
   }
@@ -1632,7 +1828,7 @@
     div.className = `msg ${role}`;
     const avatar = document.createElement('div');
     avatar.className = `avatar ${role}`;
-    avatar.textContent = role === 'ai' ? '🎓' : '🖐';
+    avatar.textContent = role === 'ai' ? 'IA' : 'EU';
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.textContent = content;
@@ -1647,7 +1843,7 @@
     div.className = `msg ${role}`;
     const avatar = document.createElement('div');
     avatar.className = `avatar ${role}`;
-    avatar.textContent = role === 'ai' ? '🎓' : '🖐';
+    avatar.textContent = role === 'ai' ? 'IA' : 'EU';
     const bubble = document.createElement('div');
     bubble.className = 'bubble' + (extraClass ? ' ' + extraClass : '');
     bubble.textContent = content;
@@ -1724,6 +1920,7 @@
   // ── INIT ──
   renderCalendar();
   renderNotasList();
+  checarSessao(); // verifica se já há login ativo; senão, mostra a tela de login
 </script>
 </body>
 </html>
