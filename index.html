@@ -3,22 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Assistente Acadêmico</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <title>Mímir · Assistente Acadêmico</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #080909;
-      --surface: #0e0f10;
-      --surface2: #131415;
-      --border: #1e1f21;
-      --accent: #4a5568;
-      --accent2: #6b7280;
-      --text: #c9cdd6;
-      --text-muted: #52555e;
-      --user-bubble: #111214;
-      --ai-bubble: #0c0d0e;
+      --bg: #0a0d14;          /* céu noturno sobre os fiordes */
+      --surface: #11161f;     /* pedra escura */
+      --surface2: #1a212e;    /* pedra mais clara */
+      --border: #2a3344;      /* aço azulado */
+      --accent: #b8893a;      /* ouro de Asgard */
+      --accent2: #e0bd6e;     /* ouro claro / brilho rúnico */
+      --text: #d8dde6;        /* branco gelado */
+      --text-muted: #6b7686;  /* aço fosco */
+      --rune: #6aa7cf;        /* azul da Bifröst */
+      --user-bubble: #141a24;
+      --ai-bubble: #0e131b;
       --sidebar-w: 220px;
     }
 
@@ -26,7 +27,7 @@
       font-family: 'DM Sans', sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
+      height: 100vh;
       display: flex;
       overflow: hidden;
     }
@@ -36,8 +37,9 @@
       position: fixed;
       inset: 0;
       background:
-        radial-gradient(ellipse 60% 40% at 20% 20%, rgba(74,85,104,0.05) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 50% at 80% 80%, rgba(107,114,128,0.04) 0%, transparent 60%);
+        radial-gradient(ellipse 70% 50% at 50% -10%, rgba(106,167,207,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 15% 25%, rgba(184,137,58,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 85% 85%, rgba(106,167,207,0.05) 0%, transparent 60%);
       pointer-events: none;
       z-index: 0;
     }
@@ -74,7 +76,7 @@
     }
 
     .sidebar-logo span {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Cinzel', serif;
       font-size: 14px;
       color: var(--text);
       white-space: nowrap;
@@ -238,7 +240,7 @@
       margin-bottom: 32px;
     }
     .page-header h2 {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Cinzel', serif;
       font-size: 24px;
       color: var(--text);
       margin-bottom: 4px;
@@ -408,7 +410,7 @@
       margin-bottom: 20px;
     }
     .cal-header h3 {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Cinzel', serif;
       font-size: 16px;
       color: var(--text);
     }
@@ -537,7 +539,7 @@
       border: none;
       outline: none;
       color: var(--text);
-      font-family: 'Playfair Display', serif;
+      font-family: 'Cinzel', serif;
       font-size: 18px;
       width: 100%;
     }
@@ -692,7 +694,7 @@
     .home-view.visible { display: flex; }
 
     .home-title {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Cinzel', serif;
       font-size: 28px;
       font-weight: 600;
       color: var(--text);
@@ -938,7 +940,7 @@
     }
 
     .login-card h1 {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Cinzel', serif;
       font-size: 22px;
       font-weight: 600;
       color: var(--text);
@@ -1002,6 +1004,58 @@
       margin-top: 2px;
     }
     .login-hint strong { color: var(--text); font-weight: 500; }
+
+    /* ── TEMA NÓRDICO (decorações) ── */
+    /* Acento dourado no topo do card de login (como uma relíquia) */
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%; transform: translateX(-50%);
+      width: 130px; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    /* Divisória com runa de Tyr (Tiwaz) */
+    .rune-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--accent2);
+      margin: 2px 0;
+    }
+    .rune-divider span {
+      height: 1px; width: 56px;
+      background: linear-gradient(90deg, transparent, var(--accent));
+    }
+    .rune-divider span:last-child {
+      background: linear-gradient(90deg, var(--accent), transparent);
+    }
+    .rune-divider svg { width: 15px; height: 15px; }
+
+    /* Brilho rúnico no emblema do login e da sidebar */
+    .login-logo, .sidebar-logo .logo-icon {
+      box-shadow: 0 0 18px rgba(184,137,58,0.25);
+    }
+
+    /* Flourish dourado sob os títulos */
+    .home-title::after {
+      content: '';
+      display: block;
+      width: 72px; height: 2px;
+      margin: 14px auto 0;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      border-radius: 2px;
+    }
+    .page-header h2 { position: relative; }
+    .page-header h2::after {
+      content: '';
+      display: block;
+      width: 48px; height: 2px;
+      margin-top: 10px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body class="deslogado">
@@ -1010,14 +1064,25 @@
 <div id="login-screen">
   <form class="login-card" onsubmit="fazerLogin(event)">
     <div class="login-logo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="26" height="26"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1a120a" stroke-width="1.5" stroke-linejoin="round" width="30" height="30">
+        <path d="M12 3 L6 13.5 L18 13.5 Z"/>
+        <path d="M7.5 10 L1.5 20.5 L13.5 20.5 Z"/>
+        <path d="M16.5 10 L10.5 20.5 L22.5 20.5 Z"/>
+      </svg>
     </div>
-    <h1>Assistente Acadêmico</h1>
-    <p class="login-sub">Entre para acessar seu painel</p>
+    <h1>Mímir</h1>
+    <p class="login-sub">O guardião do conhecimento</p>
+    <p class="login-sub">Assistente Acadêmico</p>
+
+    <div class="rune-divider">
+      <span></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 2 L6.5 8 M12 2 L17.5 8 M12 2 V22"/></svg>
+      <span></span>
+    </div>
 
     <div class="login-field">
-      <label for="login-user">Usuário</label>
-      <input id="login-user" type="text" autocomplete="username" placeholder="ex: carlos">
+      <label for="login-user">Nome</label>
+      <input id="login-user" type="text" autocomplete="username" placeholder="Digite seu nome...">
     </div>
     <div class="login-field">
       <label for="login-pass">Senha</label>
@@ -1025,8 +1090,7 @@
     </div>
 
     <div class="login-error" id="login-error"></div>
-    <button class="login-btn" type="submit" id="login-btn">Entrar</button>
-    <p class="login-hint">Demonstração: <strong>carlos</strong> / <strong>senha123</strong></p>
+    <button class="login-btn" type="submit" id="login-btn">Fazer Login</button>
   </form>
 </div>
 
@@ -1034,9 +1098,13 @@
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="18" height="18"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1a120a" stroke-width="1.6" stroke-linejoin="round" width="20" height="20">
+        <path d="M12 3 L6 13.5 L18 13.5 Z"/>
+        <path d="M7.5 10 L1.5 20.5 L13.5 20.5 Z"/>
+        <path d="M16.5 10 L10.5 20.5 L22.5 20.5 Z"/>
+      </svg>
     </div>
-    <span>Acadêmico</span>
+    <span>Mímir</span>
   </div>
 
   <div class="sidebar-section">
@@ -1075,6 +1143,15 @@
     </div>
   </div>
 
+  <!-- PROFESSOR (só aparece para quem loga como professor) -->
+  <div class="sidebar-section" id="section-professor" style="display:none;">
+    <p class="sidebar-section-title">Professor</p>
+    <div class="sidebar-item" id="nav-professor" onclick="showView('professor')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Todos os Alunos
+    </div>
+  </div>
+
   <!-- HISTÓRICO -->
   <div class="sidebar-section">
     <p class="sidebar-section-title">Histórico</p>
@@ -1109,7 +1186,7 @@
 
   <!-- ── ASSISTENTE (HOME + CHAT) ── -->
   <div class="home-view visible" id="home-view">
-    <h1 class="home-title">O que você precisa estudar hoje?</h1>
+    <h1 class="home-title">Qual a dúvida de hoje?</h1>
     <div class="home-input-wrap">
       <div class="home-input-bar">
         <textarea
@@ -1293,11 +1370,20 @@
     <button class="btn-config-save" onclick="salvarConfiguracoes()">Salvar alterações</button>
   </div>
 
+  <!-- ── PAINEL DO PROFESSOR ── -->
+  <div class="page-view" id="view-professor">
+    <div class="page-header">
+      <h2>Painel do Professor</h2>
+      <p>Desempenho de todos os alunos da turma</p>
+    </div>
+    <div id="professor-content"><p style="color:var(--text-muted);font-size:13px;">Carregando alunos...</p></div>
+  </div>
+
 </main>
 
 <script>
   // ── NAVEGAÇÃO ──
-  const views = ['assistente','inicio','calendario','notas','desempenho','frequencia','disciplinas','configuracoes'];
+  const views = ['assistente','inicio','calendario','notas','desempenho','frequencia','disciplinas','configuracoes','professor'];
   let currentView = 'assistente';
 
   function showView(name) {
@@ -1332,6 +1418,9 @@
       const el = document.getElementById('view-' + name);
       if (el) el.classList.add('visible');
     }
+
+    // O painel do professor busca os dados de todos os alunos toda vez que é aberto
+    if (name === 'professor') renderProfessor();
   }
 
   function voltarHome() {
@@ -1362,7 +1451,7 @@
 
     if (!username || !senha) { errEl.textContent = 'Preencha usuário e senha.'; return; }
 
-    btn.disabled = true; btn.textContent = 'Entrando...';
+    btn.disabled = true; btn.textContent = 'Processando...';
     try {
       const res = await fetch('/login', {
         method: 'POST',
@@ -1378,19 +1467,24 @@
     } catch (err) {
       errEl.textContent = 'Servidor indisponível. O Flask está rodando?';
     } finally {
-      btn.disabled = false; btn.textContent = 'Entrar';
+      btn.disabled = false; btn.textContent = 'Fazer Login';
     }
   }
 
   // Mostra o app e carrega os dados depois do login bem-sucedido
   function entrarNoApp(sessao) {
     document.body.classList.remove('deslogado');
+    const ehProfessor = !!(sessao && sessao.tipo === 'professor');
     if (sessao && sessao.username) {
       document.getElementById('display-name').textContent = sessao.username;
       document.getElementById('user-role-label').textContent =
-        sessao.tipo === 'professor' ? 'Professor' : 'Estudante';
+        ehProfessor ? 'Professor' : 'Estudante';
     }
+    // A seção "Professor" na barra lateral só existe para quem é professor
+    document.getElementById('section-professor').style.display = ehProfessor ? 'block' : 'none';
     carregarDados();
+    // Professor já começa no painel com todos os alunos
+    if (ehProfessor) showView('professor');
   }
 
   // Ao abrir a página, verifica se já existe uma sessão ativa (evita relogar no F5)
@@ -1658,6 +1752,78 @@
 
     document.getElementById('disciplinas-content').innerHTML =
       `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">${cards}</div>`;
+  }
+
+  // ── PAINEL DO PROFESSOR ──
+  async function renderProfessor() {
+    const cont = document.getElementById('professor-content');
+    cont.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Carregando alunos...</p>';
+    try {
+      const res = await fetch('/todos_alunos');
+      const json = await res.json();
+      if (json.status !== 'sucesso') {
+        cont.innerHTML = `<p style="color:var(--text-muted);font-size:13px;">${json.mensagem || 'Não foi possível carregar os alunos.'}</p>`;
+        return;
+      }
+
+      // Cards-resumo da turma
+      const r = json.resumo;
+      const resumoCards = `
+        <div class="cards-grid">
+          <div class="stat-card"><div class="card-label">Total de Alunos</div><div class="card-value">${r.total_alunos}</div><div class="card-sub">cadastrados</div></div>
+          <div class="stat-card"><div class="card-label">Média da Turma</div><div class="card-value" style="color:${corMedia(r.media_turma)}">${r.media_turma.toFixed(1)}</div><div class="card-sub">de todas as disciplinas</div></div>
+          <div class="stat-card"><div class="card-label">Frequência Média</div><div class="card-value">${r.frequencia_media}%</div><div class="card-sub">presença da turma</div></div>
+          <div class="stat-card"><div class="card-label">Alunos em Risco</div><div class="card-value" style="color:${r.alunos_em_risco ? '#f87171' : 'var(--text)'}">${r.alunos_em_risco}</div><div class="card-sub">precisam de atenção</div></div>
+        </div>`;
+
+      // Tabela geral: uma linha por aluno
+      const linhas = json.alunos.map(a => {
+        const situacao = a.em_risco.length
+          ? '<span class="badge-status bad">Em risco</span>'
+          : '<span class="badge-status ok">Regular</span>';
+        return `<tr>
+          <td>${a.nome}</td>
+          <td><strong style="color:${corMedia(a.media_geral)}">${a.media_geral.toFixed(1)}</strong></td>
+          <td>${a.frequencia_geral}%</td>
+          <td>${a.total_disciplinas}</td>
+          <td>${a.em_risco.length ? a.em_risco.join(', ') : '—'}</td>
+          <td>${situacao}</td>
+        </tr>`;
+      }).join('');
+      const tabelaGeral = `
+        <div class="table-wrap">
+          <div class="table-title">Desempenho dos Alunos</div>
+          <table class="data-table">
+            <thead><tr><th>Aluno</th><th>Média Geral</th><th>Frequência</th><th>Disciplinas</th><th>Disciplinas em Risco</th><th>Situação</th></tr></thead>
+            <tbody>${linhas}</tbody>
+          </table>
+        </div>`;
+
+      // Detalhamento: as matérias de cada aluno
+      const detalhes = json.alunos.map(a => {
+        const linhasMat = Object.keys(a.medias).map(m => {
+          const media = a.medias[m];
+          const f = a.faltas[m];
+          const freq = f ? Math.round(((f.total - f.faltas) / f.total) * 100) + '%' : '—';
+          const sit = badgeSituacao(media, f ? f.situacao : 'ok');
+          return `<tr><td>${m}</td><td><strong style="color:${corMedia(media)}">${media.toFixed(1)}</strong></td><td>${freq}</td><td>${sit}</td></tr>`;
+        }).join('');
+        return `
+          <div class="table-wrap">
+            <div class="table-title">${a.nome} · média ${a.media_geral.toFixed(1)} · frequência ${a.frequencia_geral}%</div>
+            <table class="data-table">
+              <thead><tr><th>Disciplina</th><th>Média</th><th>Frequência</th><th>Situação</th></tr></thead>
+              <tbody>${linhasMat}</tbody>
+            </table>
+          </div>`;
+      }).join('');
+
+      cont.innerHTML = resumoCards + tabelaGeral
+        + `<div class="page-header" style="margin:24px 0 16px;"><h2 style="font-size:16px;">Detalhamento por Aluno</h2></div>`
+        + detalhes;
+    } catch (e) {
+      cont.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Erro ao conectar com o servidor. Verifique se o Flask está rodando.</p>';
+    }
   }
 
   // ── CALENDÁRIO ──

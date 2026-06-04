@@ -66,14 +66,18 @@ cursor.executescript("""
 """)
 
 # Aluno precisa existir antes do usuário que aponta para ele (chave estrangeira)
-cursor.execute("INSERT OR IGNORE INTO alunos VALUES (1, 'Carlos')")
+cursor.execute("INSERT OR IGNORE INTO alunos VALUES (1, 'André')")
+cursor.execute("INSERT OR IGNORE INTO alunos VALUES (2, 'Diego')")
+cursor.execute("INSERT OR IGNORE INTO alunos VALUES (3, 'Tiago')")
 
 # Logins do sistema (senha vira hash na hora de gravar)
 cursor.executemany(
     "INSERT INTO usuarios (username, senha, tipo, aluno_id) VALUES (?,?,?,?)",
     [
         ("professor1", generate_password_hash("senha123"), "professor", None),  # professor não tem aluno vinculado
-        ("carlos",     generate_password_hash("senha123"), "aluno", 1),         # login do aluno Carlos (id 1)
+        ("André", generate_password_hash("senha123"), "aluno", 1), # login do aluno André (id 1)
+        ("Diego", generate_password_hash("senha123"), "aluno", 2), # login do aluno Diego (id 2)
+        ("Tiago", generate_password_hash("senha123"), "aluno", 3), # login do aluno Tiago (id 3)
     ]
 )
 
@@ -101,6 +105,43 @@ cursor.executemany("INSERT OR IGNORE INTO provas (aluno_id, materia, data, conte
     (1, "Engenharia de Soluções", "2025-06-12", "Interpretação de texto e gramática"),
     (1, "Fundamentos da Computação e Infraestrutura", "2025-06-15", "Segunda Guerra Mundial"),
 ])
+
+# Diego (2) e Tiago (3): mesmas matérias do André (colunas iguais), mas notas/faltas próprias (linhas diferentes)
+cursor.executemany("INSERT INTO notas (aluno_id, materia, nota) VALUES (?,?,?)", [
+    # Diego (2) - aluno com bom desempenho
+    (2, "Engenharia de Dados", 6.0),
+    (2, "Engenharia de Dados", 7.5),
+    (2, "Engenharia de Dados", 8.0),
+    (2, "Engenharia de Soluções", 9.0),
+    (2, "Engenharia de Soluções", 8.0),
+    (2, "Engenharia de Soluções", 9.5),
+    (2, "Fundamentos da Computação e Infraestrutura", 5.0),
+    (2, "Fundamentos da Computação e Infraestrutura", 6.0),
+    (2, "Fundamentos da Computação e Infraestrutura", 7.0),
+    # Tiago (3) - aluno em situação de risco
+    (3, "Engenharia de Dados", 4.0),
+    (3, "Engenharia de Dados", 5.5),
+    (3, "Engenharia de Dados", 6.0),
+    (3, "Engenharia de Soluções", 7.0),
+    (3, "Engenharia de Soluções", 6.5),
+    (3, "Engenharia de Soluções", 8.0),
+    (3, "Fundamentos da Computação e Infraestrutura", 3.0),
+    (3, "Fundamentos da Computação e Infraestrutura", 5.0),
+    (3, "Fundamentos da Computação e Infraestrutura", 4.5),
+])
+
+cursor.executemany("INSERT OR IGNORE INTO faltas (aluno_id, materia, faltas, total_aulas) VALUES (?,?,?,?)", [
+    (2, "Engenharia de Dados", 6, 40),
+    (2, "Engenharia de Soluções", 2, 40),
+    (2, "Fundamentos da Computação e Infraestrutura", 8, 40),
+    (3, "Engenharia de Dados", 11, 40),   # acima de 25% -> reprovado por falta
+    (3, "Engenharia de Soluções", 4, 40),
+    (3, "Fundamentos da Computação e Infraestrutura", 12, 40),  # acima de 25% -> reprovado por falta
+])
+
+# Provas são as mesmas para a turma toda (mesma data e conteúdo), só mudam de dono
+for novo_id in (2, 3):
+    cursor.execute("INSERT OR IGNORE INTO provas (aluno_id, materia, data, conteudo) SELECT ?, materia, data, conteudo FROM provas WHERE aluno_id = 1", (novo_id,))
 
 conn.commit()
 conn.close()
