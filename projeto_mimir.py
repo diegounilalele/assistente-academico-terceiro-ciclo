@@ -1,20 +1,20 @@
 from flask import Flask, request, jsonify, send_from_directory, session  # comunicação com o front-end
-from werkzeug.security import check_password_hash                        # conferir senha com hash (vem junto do Flask)
-from dotenv import load_dotenv                                           # esconder a api / configs no .env
-from pyngrok import ngrok                                                # expor o servidor na internet (opcional)
-from contextlib import contextmanager                                    # criar o gerenciador de conexão "with"
-from functools import wraps                                              # preservar o nome das funções nos decorators
-import sqlite3   # banco de dados
-import requests  # requisições HTTP à API do Ollama
+from werkzeug.security import check_password_hash # conferir senha com hash (vem junto do Flask)
+from dotenv import load_dotenv # esconder a api / configs no .env
+from pyngrok import ngrok # expor o servidor na internet (opcional)
+from contextlib import contextmanager # criar o gerenciador de conexão "with"
+from functools import wraps # preservar o nome das funções nos decorators
+import sqlite3 # banco de dados
+import requests # requisições HTTP à API do Ollama
 import re
 import json
 import os
 
-load_dotenv()  # carrega as variáveis do .env
+load_dotenv() # carrega as variáveis do .env
 
 
-OLLAMA_URL   = os.getenv("OLLAMA_URL", "http://localhost:11434") # URL do Ollama (local por padrão)
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b") # modelo do Ollama
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434") # URL do Ollama (local por padrão)
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b") # modelo do Ollama
 NGROK_TOKEN  = os.getenv("ngrok_token", "") # token do ngrok (opcional)
 CAMINHO_BANCO = "universidade.db" # nome do arquivo do banco em um só lugar
 LIMITE_CARACTERES_PERGUNTA = 500 # tamanho máximo da pergunta
@@ -22,15 +22,6 @@ ALUNO_PADRAO = 1 # aluno usado em modo demonstração
 
 servidor = Flask(__name__)
 servidor.secret_key = os.getenv("SEGREDOSEGREDO", "bologna") # chave que assina os cookies de sessão
-
-# Palavras-chave acadêmicas: filtram perguntas fora do tema antes de gastar tokens com a IA
-PALAVRAS_ACADEMICAS = [
-    "nota", "média", "falta", "prova", "matéria", "disciplina", "aprovado",
-    "reprovado", "frequência", "aula", "semestre", "resultado", "desempenho",
-    "preciso", "tirar", "passar", "boletim", "calendário", "conteúdo", "estudo",
-    "quanto", "quando", "qual", "quais", "como", "me", "minha", "meu", "tenho"
-]
-
 
 
 @contextmanager
@@ -45,8 +36,6 @@ def conectar_db():
         conexao.close() # fecha a conexão de qualquer jeito
 
 
-
-
 def login_obrigatorio(rota):
     @wraps(rota)
     def protegida(*args, **kwargs):
@@ -57,7 +46,6 @@ def login_obrigatorio(rota):
 
 
 def apenas_professor(rota):
-    """Decorator: libera a rota só para quem está logado como professor."""
     @wraps(rota)
     def protegida(*args, **kwargs):
         if session.get("usuario_tipo") != "professor":
@@ -75,7 +63,6 @@ def aluno_atual():
 
 
 def buscar_dados_aluno(id_aluno):
-    """Lê tudo do aluno no banco e devolve já com médias, situação de faltas e cálculos prontos."""
     with conectar_db() as conexao:
         cursor = conexao.cursor()
 
@@ -156,12 +143,6 @@ def historico_do(id_aluno):
     return historicos.setdefault(id_aluno, [])
 
 
-def pergunta_e_academica(pergunta):
-    """True se a pergunta tiver pelo menos uma palavra-chave acadêmica."""
-    pergunta_lower = pergunta.lower()
-    return any(palavra in pergunta_lower for palavra in PALAVRAS_ACADEMICAS)
-
-
 def condicionais(pergunta, id_aluno):
     """Valida a pergunta, monta o contexto com os dados do aluno e consulta a IA (Ollama)."""
     if not pergunta or not pergunta.strip():
@@ -171,14 +152,6 @@ def condicionais(pergunta, id_aluno):
     if len(pergunta) > LIMITE_CARACTERES_PERGUNTA:
         return {"tipo": "resposta", "texto": f"Pergunta muito longa. O limite é {LIMITE_CARACTERES_PERGUNTA} caracteres."}
 
-    # Validação: pergunta fora do escopo acadêmico (economiza tokens não chamando a IA)
-    if not pergunta_e_academica(pergunta):
-        return {"tipo": "resposta", "texto": "Só consigo responder perguntas relacionadas ao seu desempenho acadêmico."}
-
-    dados = buscar_dados_aluno(id_aluno)
-    if not dados:
-        return {"tipo": "resposta", "texto": "Aluno não encontrado."}
-
     historico_conversa = historico_do(id_aluno)
     historico_conversa.append({"role": "user", "content": pergunta})
 
@@ -186,13 +159,8 @@ def condicionais(pergunta, id_aluno):
     if len(historico_conversa) > 10:
         del historico_conversa[:-10]
 
-    # Monta os alertas para incluir no prompt, se houver
-    alertas_texto = ""
-    if dados["alertas_faltas"]:
-        alertas_texto = f"\nAlertas de faltas: {json.dumps(dados['alertas_faltas'], ensure_ascii=False)}"
-
     sabio = f"""
-Você é um assistente especialista em tecnologia. Responda qualquer pergunta sobre tecnologia de forma clara e direta.
+Você é um assistente especialista em tecnologia. Responda de forma clara e direta APENAS o que for perguntado.
 
 Você domina todos os assuntos de tecnologia, incluindo:
 Programação (Python, JavaScript, C, Java, SQL, e qualquer outra linguagem)
@@ -202,13 +170,6 @@ Hardware, sistemas operacionais e segurança
 Desenvolvimento web, mobile e desktop
 DevOps, cloud e ferramentas de desenvolvimento
 Qualquer outro assunto relacionado a tecnologia
-
-Dados acadêmicos do aluno {dados['nome']} nesta instituição:
-Médias por matéria: {json.dumps(dados['medias'], ensure_ascii=False)}
-Faltas: {json.dumps(dados['faltas'], ensure_ascii=False)}
-Provas agendadas: {json.dumps(dados['provas'], ensure_ascii=False)}
-Nota necessária para passar por matéria: {json.dumps(dados['necessario_para_passar'], ensure_ascii=False)}
-{alertas_texto}
 
 Histórico recente da conversa: {json.dumps(historico_conversa[:-1], ensure_ascii=False)}
 
@@ -220,10 +181,9 @@ Caso não for um json válido, responda:
 {{"tipo": "resposta", "texto": "Desculpe, não consigo responder essa pergunta."}}
 
 Importante:
-Para perguntas sobre notas, faltas ou provas use os dados acadêmicos acima.
+Responda apenas o que for perguntado e não faça cálculos nem suponha dados do aluno.
+Para perguntas sobre notas, faltas ou desempenho, diga que já existe uma aba específica para isso no sistema.
 Para perguntas de tecnologia, responda de forma técnica e didática.
-Nunca invente dados acadêmicos que não estejam listados acima.
-Se houver alertas de faltas, mencione-os quando relevante.
 """
     try:
         resposta = requests.post(
@@ -231,12 +191,13 @@ Se houver alertas de faltas, mencione-os quando relevante.
             json={
                 "model": OLLAMA_MODEL,
                 "messages": [
-                    {"role": "system", "content": sabio}, # contexto com os dados do aluno
+                    {"role": "system", "content": sabio}, # instruções do assistente
                     *historico_conversa # histórico da conversa
                 ],
-                "stream": False
+                "stream": False,
+                "keep_alive": "30m"  # mantém o modelo na RAM por 30 min (evita recarregar a cada pergunta)
             },
-            timeout=60
+            timeout=300  # CPU + modelo grande podem demorar; tempo generoso pra não cortar a resposta
         )
         resposta.raise_for_status()
         texto = resposta.json()["message"]["content"].strip()
@@ -282,8 +243,8 @@ def login():
     if usuario and check_password_hash(usuario["senha"], senha):
         session["usuario_id"]   = usuario["id"]
         session["usuario_tipo"] = usuario["tipo"]
-        session["username"]     = username
-        session["aluno_id"]     = usuario["aluno_id"]
+        session["username"] = username
+        session["aluno_id"] = usuario["aluno_id"]
         return jsonify({
             "status": "sucesso",
             "tipo": usuario["tipo"],
@@ -349,8 +310,8 @@ def resetar():
 def cadastrar_nota():
     dados = request.get_json() or {}
     id_aluno = dados.get("aluno_id")
-    materia  = dados.get("materia")
-    nota     = dados.get("nota")
+    materia = dados.get("materia")
+    nota = dados.get("nota")
 
     if not id_aluno or not materia or nota is None:
         return jsonify({"status": "erro", "mensagem": "Dados incompletos."}), 400
@@ -367,7 +328,7 @@ def cadastrar_nota():
 @apenas_professor
 def cadastrar_aluno():
     dados = request.get_json() or {}
-    novo_id   = dados.get("id")
+    novo_id = dados.get("id")
     novo_nome = dados.get("nome")
 
     if not novo_id or not novo_nome:
@@ -385,7 +346,7 @@ def cadastrar_aluno():
 @apenas_professor
 def atualizar_aluno():
     dados = request.get_json() or {}
-    id_aluno  = dados.get("id")
+    id_aluno = dados.get("id")
     novo_nome = dados.get("nome")
 
     if not id_aluno or not novo_nome:
@@ -521,9 +482,7 @@ def todos_alunos():
     return jsonify({"status": "sucesso", "alunos": alunos, "resumo": resumo})
 
 
-# ───────────────────────── INICIALIZAÇÃO ─────────────────────────
-
-if __name__ == "__main__":
+if __name__ == "__main__": # Verifica se este arquivo está sendo executado diretamente (python projeto_mimir.py) ou importado por outro (import projeto_mimir)
     usar_ngrok = os.getenv("USAR_NGROK", "false").lower() == "true"
 
     if usar_ngrok:

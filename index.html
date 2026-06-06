@@ -1127,7 +1127,7 @@
     </div>
   </div>
 
-  <div class="sidebar-section">
+  <div class="sidebar-section" id="section-academico">
     <p class="sidebar-section-title">Acadêmico</p>
     <div class="sidebar-item" id="nav-desempenho" onclick="showView('desempenho')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -1432,8 +1432,6 @@
       }
     }
     conversaAtual = null;
-    modo = null;
-    faltas = null;
     document.getElementById('messages').innerHTML = '';
     showView('assistente');
   }
@@ -1482,6 +1480,14 @@
     }
     // A seção "Professor" na barra lateral só existe para quem é professor
     document.getElementById('section-professor').style.display = ehProfessor ? 'block' : 'none';
+
+    // Abas que mostram o desempenho PESSOAL não fazem sentido para um professor
+    // (ele acompanha a turma, não a si mesmo). Some o "Início" e toda a seção "Acadêmico"
+    // (Desempenho, Frequência, Disciplinas) quando for professor.
+    const navInicio = document.getElementById('nav-inicio');
+    if (navInicio) navInicio.style.display = ehProfessor ? 'none' : 'flex';
+    document.getElementById('section-academico').style.display = ehProfessor ? 'none' : 'block';
+
     carregarDados();
     // Professor já começa no painel com todos os alunos
     if (ehProfessor) showView('professor');
@@ -1931,8 +1937,6 @@
   const chatSendBtn = document.getElementById('chat-send-btn');
   const historyList = document.getElementById('history-list');
 
-  let modo = null;
-  let faltas = null;
   let historico = [];
   let conversaAtual = null;
 
@@ -1982,7 +1986,6 @@
       if (!jaExiste) { historico.unshift(conversaAtual); renderHistorico(); }
     }
     conversaAtual = conv;
-    modo = null; faltas = null;
     messagesEl.innerHTML = '';
     conv.mensagens.forEach(m => addMessageSilent(m.role, m.content));
     showView('assistente');
@@ -1994,7 +1997,7 @@
     div.className = `msg ${role}`;
     const avatar = document.createElement('div');
     avatar.className = `avatar ${role}`;
-    avatar.textContent = role === 'ai' ? 'Mimir' : 'EU';
+    avatar.textContent = role === 'ai' ? 'IA' : 'EU';
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.textContent = content;
@@ -2009,7 +2012,7 @@
     div.className = `msg ${role}`;
     const avatar = document.createElement('div');
     avatar.className = `avatar ${role}`;
-    avatar.textContent = role === 'ai' ? 'Mimir' : 'EU';
+    avatar.textContent = role === 'ai' ? 'IA' : 'EU';
     const bubble = document.createElement('div');
     bubble.className = 'bubble' + (extraClass ? ' ' + extraClass : '');
     bubble.textContent = content;
@@ -2055,22 +2058,10 @@
     setLoading(true);
     const typing = addMessage('ai', 'Processando...', 'typing');
     try {
-      let resposta = '';
-      if (modo === 'notas') {
-        const dados = await chamarFlask('/calcular_media', { notas: texto });
-        resposta = dados.texto; modo = null;
-      } else if (modo === 'faltas') {
-        faltas = texto; modo = 'total';
-        resposta = 'Quantas aulas no total?';
-      } else if (modo === 'total') {
-        const dados = await chamarFlask('/calcular_faltas', { faltas, total: texto });
-        resposta = dados.texto; modo = null; faltas = null;
-      } else {
-        const dados = await chamarFlask('/perguntar', { pergunta: texto });
-        if (dados.tipo === 'pedir_notas') { modo = 'notas'; resposta = 'Digite suas notas separadas por espaço ou vírgula:'; }
-        else if (dados.tipo === 'pedir_faltas') { modo = 'faltas'; resposta = 'Quantas faltas você teve?'; }
-        else { resposta = dados.texto; }
-      }
+      // Toda pergunta vai direto para a IA. O back-end (/perguntar) sempre
+      // responde no formato {tipo:"resposta", texto:"..."}.
+      const dados = await chamarFlask('/perguntar', { pergunta: texto });
+      const resposta = dados.texto;
       typing.textContent = resposta;
       typing.classList.remove('typing');
       if (conversaAtual) conversaAtual.mensagens.push({ role: 'ai', content: resposta });

@@ -134,7 +134,7 @@ cursor.executemany("INSERT OR IGNORE INTO faltas (aluno_id, materia, faltas, tot
     (2, "Engenharia de Dados", 6, 40),
     (2, "Engenharia de Soluções", 2, 40),
     (2, "Fundamentos da Computação e Infraestrutura", 8, 40),
-    (3, "Engenharia de Dados", 11, 40),   # acima de 25% -> reprovado por falta
+    (3, "Engenharia de Dados", 11, 40), # acima de 25% -> reprovado por falta
     (3, "Engenharia de Soluções", 4, 40),
     (3, "Fundamentos da Computação e Infraestrutura", 12, 40),  # acima de 25% -> reprovado por falta
 ])
@@ -142,6 +142,41 @@ cursor.executemany("INSERT OR IGNORE INTO faltas (aluno_id, materia, faltas, tot
 # Provas são as mesmas para a turma toda (mesma data e conteúdo), só mudam de dono
 for novo_id in (2, 3):
     cursor.execute("INSERT OR IGNORE INTO provas (aluno_id, materia, data, conteudo) SELECT ?, materia, data, conteudo FROM provas WHERE aluno_id = 1", (novo_id,))
+
+# ── Matérias novas: Cidadania, Ética e Espiritualidade + Fundamentos Matemáticos para a Computação ──
+# Mesmas duas matérias para todos os alunos (colunas iguais), com notas próprias de cada um (linhas diferentes)
+cursor.executemany("INSERT INTO notas (aluno_id, materia, nota) VALUES (?,?,?)", [
+    # André (1) - desempenho mediano
+    (1, "Cidadania, Ética e Espiritualidade", 7.0),
+    (1, "Cidadania, Ética e Espiritualidade", 8.5),
+    (1, "Cidadania, Ética e Espiritualidade", 6.5),
+    (1, "Fundamentos Matemáticos para a Computação", 6.0),
+    (1, "Fundamentos Matemáticos para a Computação", 5.5),
+    (1, "Fundamentos Matemáticos para a Computação", 7.0),
+    # Diego (2) - bom desempenho
+    (2, "Cidadania, Ética e Espiritualidade", 8.5),
+    (2, "Cidadania, Ética e Espiritualidade", 9.0),
+    (2, "Cidadania, Ética e Espiritualidade", 8.0),
+    (2, "Fundamentos Matemáticos para a Computação", 7.0),
+    (2, "Fundamentos Matemáticos para a Computação", 6.5),
+    (2, "Fundamentos Matemáticos para a Computação", 8.0),
+    # Tiago (3) - em situação de risco
+    (3, "Cidadania, Ética e Espiritualidade", 5.0),
+    (3, "Cidadania, Ética e Espiritualidade", 4.0),
+    (3, "Cidadania, Ética e Espiritualidade", 6.0),
+    (3, "Fundamentos Matemáticos para a Computação", 3.5),
+    (3, "Fundamentos Matemáticos para a Computação", 4.0),
+    (3, "Fundamentos Matemáticos para a Computação", 5.0),
+])
+
+cursor.executemany("INSERT OR IGNORE INTO faltas (aluno_id, materia, faltas, total_aulas) VALUES (?,?,?,?)", [
+    (1, "Cidadania, Ética e Espiritualidade", 3, 40),
+    (1, "Fundamentos Matemáticos para a Computação", 5, 40),
+    (2, "Cidadania, Ética e Espiritualidade", 1, 40),
+    (2, "Fundamentos Matemáticos para a Computação", 4, 40),
+    (3, "Cidadania, Ética e Espiritualidade", 9, 40),            # 22,5% -> alerta de atenção
+    (3, "Fundamentos Matemáticos para a Computação", 13, 40),    # acima de 25% -> reprovado por falta
+])
 
 conn.commit()
 conn.close()
