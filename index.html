@@ -382,6 +382,8 @@
       position: relative;
     }
     .cal-day:hover { background: var(--surface2); color: var(--text); }
+    .cal-day.aula { background: rgba(106,167,207,0.12); color: var(--text); }
+    .cal-day.ferias { background: rgba(184,137,58,0.13); color: var(--accent2); }
     .cal-day.today {
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       color: white;
@@ -396,6 +398,21 @@
       background: #fbbf24;
     }
     .cal-day.empty { cursor: default; }
+    .cal-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 18px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .cal-legend .leg-item { display: flex; align-items: center; gap: 6px; }
+    .cal-legend .leg-dot { width: 11px; height: 11px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
+    .cal-legend .leg-dot.aula { background: rgba(106,167,207,0.55); }
+    .cal-legend .leg-dot.ferias { background: rgba(184,137,58,0.6); }
+    .cal-legend .leg-dot.prova { width: 9px; height: 9px; border-radius: 50%; background: #fbbf24; }
+    .cal-legend .leg-dot.hoje { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+    .cal-detalhe { margin-top: 14px; font-size: 13px; color: var(--text); min-height: 18px; }
     .cal-wrap {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -1241,7 +1258,7 @@
   <div class="page-view" id="view-calendario">
     <div class="page-header">
       <h2>Calendário</h2>
-      <p>Provas, trabalhos e eventos acadêmicos</p>
+      <p>Aulas, provas e eventos acadêmicos</p>
     </div>
     <div class="cal-wrap">
       <div class="cal-header">
@@ -1252,7 +1269,26 @@
         </div>
       </div>
       <div class="calendar-grid" id="cal-grid"></div>
+      <div class="cal-legend">
+        <span class="leg-item"><span class="leg-dot aula"></span>Dia de aula</span>
+        <span class="leg-item"><span class="leg-dot ferias"></span>Férias</span>
+        <span class="leg-item"><span class="leg-dot prova"></span>Prova</span>
+        <span class="leg-item"><span class="leg-dot hoje"></span>Hoje</span>
+      </div>
+      <div class="cal-detalhe" id="cal-detalhe">Clique em um dia para ver o horário.</div>
     </div>
+
+    <div class="page-header" style="margin-bottom:16px;">
+      <h2 style="font-size:16px;">Rotina das Aulas</h2>
+      <p>Segunda a sexta (dias úteis)</p>
+    </div>
+    <div class="cards-grid">
+      <div class="stat-card"><div class="card-label">Aula</div><div class="card-value" style="font-size:22px;">19h–22h</div><div class="card-sub">Segunda a sexta</div></div>
+      <div class="stat-card"><div class="card-label">APS</div><div class="card-value" style="font-size:22px;">19h–19h30</div><div class="card-sub">Abre 19h · fecha 19h30</div></div>
+      <div class="stat-card"><div class="card-label">Hands On</div><div class="card-value" style="font-size:22px;">21h–22h40</div><div class="card-sub">Abre 21h · fecha 22h40</div></div>
+      <div class="stat-card"><div class="card-label">Férias</div><div class="card-value" style="font-size:22px;">11/jun</div><div class="card-sub">Retorno 03/ago (1º dia útil)</div></div>
+    </div>
+
     <div class="page-header" style="margin-bottom:16px;">
       <h2 style="font-size:16px;">Próximos Eventos</h2>
     </div>
@@ -1717,11 +1753,15 @@
     const sorted = [...provas].sort((a,b) => a.data.localeCompare(b.data));
     const html = sorted.map(p => {
       const dt = new Date(p.data + 'T00:00:00');
+      // O "Projeto Integrador" é a apresentação do projeto, não uma prova
+      const ehApresentacao = p.materia === 'Projeto Integrador';
+      const titulo = ehApresentacao ? `Apresentação — ${p.materia}` : `Prova — ${p.materia}`;
+      const tag = ehApresentacao ? 'Apresentação' : 'Prova';
       return `
         <div class="event-item">
           <div class="event-date-box"><div class="day">${dt.getDate()}</div><div class="month">${meses[dt.getMonth()]}</div></div>
-          <div class="event-info"><div class="title">Prova — ${p.materia}</div><div class="sub">${p.conteudo}</div></div>
-          <span class="event-tag">Prova</span>
+          <div class="event-info"><div class="title">${titulo}</div><div class="sub">${p.conteudo}</div></div>
+          <span class="event-tag">${tag}</span>
         </div>`;
     }).join('');
     document.getElementById('eventos-content').innerHTML = html;
@@ -1836,6 +1876,19 @@
   let calDate = new Date();
   let provasDias = [];
 
+  // Rotina acadêmica: aulas de segunda a sexta, 19h–22h (com APS e Hands On).
+  // Férias de 11/jun/2026 até o 1º dia útil de agosto (retorno em 03/ago/2026).
+  const FERIAS_INICIO  = new Date(2026, 5, 11);  // 11/jun/2026 (mês 5 = junho)
+  const FERIAS_RETORNO = new Date(2026, 7, 3);   // 03/ago/2026 = 1º dia útil de agosto
+
+  function ehFerias(dt) {
+    return dt >= FERIAS_INICIO && dt < FERIAS_RETORNO;  // 11/jun .. 02/ago
+  }
+  function ehDiaDeAula(dt) {
+    const dow = dt.getDay();                 // 0=Dom ... 6=Sáb
+    return dow >= 1 && dow <= 5 && !ehFerias(dt);
+  }
+
   function renderCalendar() {
     const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     document.getElementById('cal-month-label').textContent = months[calDate.getMonth()] + ' ' + calDate.getFullYear();
@@ -1848,9 +1901,20 @@
     let html = dayNames.map(d => `<div class="cal-day-name">${d}</div>`).join('');
     for (let i = 0; i < firstDay; i++) html += `<div class="cal-day empty"></div>`;
     for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(calDate.getFullYear(), calDate.getMonth(), d);
       const isToday = d === today.getDate() && calDate.getMonth() === today.getMonth() && calDate.getFullYear() === today.getFullYear();
-      const hasEvent = provasDias.some(dt => dt.getDate() === d && dt.getMonth() === calDate.getMonth() && dt.getFullYear() === calDate.getFullYear());
-      html += `<div class="cal-day${isToday ? ' today' : ''}${hasEvent ? ' has-event' : ''}">${d}</div>`;
+      const hasEvent = provasDias.some(p => p.getDate() === d && p.getMonth() === calDate.getMonth() && p.getFullYear() === calDate.getFullYear());
+      const ferias = ehFerias(dt);
+      const aula = ehDiaDeAula(dt);
+      const titulo = ferias ? 'Férias — sem aula'
+                   : aula  ? 'Aula 19h–22h · APS 19h–19h30 · Hands On 21h–22h40'
+                   : 'Sem aula';
+      let classes = 'cal-day';
+      if (ferias) classes += ' ferias';
+      else if (aula) classes += ' aula';
+      if (isToday) classes += ' today';
+      if (hasEvent) classes += ' has-event';
+      html += `<div class="${classes}" title="${titulo}" onclick="mostrarDetalheDia(${calDate.getFullYear()}, ${calDate.getMonth()}, ${d})">${d}</div>`;
     }
     grid.innerHTML = html;
   }
@@ -1858,6 +1922,24 @@
   function calNav(dir) {
     calDate.setMonth(calDate.getMonth() + dir);
     renderCalendar();
+  }
+
+  // Mostra o horário do dia clicado no calendário
+  function mostrarDetalheDia(ano, mes, dia) {
+    const el = document.getElementById('cal-detalhe');
+    if (!el) return;
+    const dt = new Date(ano, mes, dia);
+    const nomesDias = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+    const dataFmt = `${String(dia).padStart(2, '0')}/${String(mes + 1).padStart(2, '0')} · ${nomesDias[dt.getDay()]}`;
+    let detalhe;
+    if (ehFerias(dt)) {
+      detalhe = 'Férias — sem aula.';
+    } else if (ehDiaDeAula(dt)) {
+      detalhe = 'Aula 19h–22h · APS 19h–19h30 · Hands On 21h–22h40.';
+    } else {
+      detalhe = 'Fim de semana — sem aula.';
+    }
+    el.innerHTML = `<strong>${dataFmt}:</strong> ${detalhe}`;
   }
 
   // ── NOTAS ──

@@ -14,7 +14,7 @@ load_dotenv() # carrega as variáveis do .env
 
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434") # URL do Ollama (local por padrão)
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b") # modelo do Ollama
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:20b-cloud") # modelo do Ollama
 NGROK_TOKEN  = os.getenv("ngrok_token", "") # token do ngrok (opcional)
 CAMINHO_BANCO = "universidade.db" # nome do arquivo do banco em um só lugar
 LIMITE_CARACTERES_PERGUNTA = 500 # tamanho máximo da pergunta

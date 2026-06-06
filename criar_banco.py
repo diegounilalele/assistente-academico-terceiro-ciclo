@@ -101,9 +101,12 @@ cursor.executemany("INSERT OR IGNORE INTO faltas (aluno_id, materia, faltas, tot
 ])
 
 cursor.executemany("INSERT OR IGNORE INTO provas (aluno_id, materia, data, conteudo) VALUES (?,?,?,?)", [
-    (1, "Engenharia de Dados", "2025-06-10", "Equações do 2º grau e funções"),
-    (1, "Engenharia de Soluções", "2025-06-12", "Interpretação de texto e gramática"),
-    (1, "Fundamentos da Computação e Infraestrutura", "2025-06-15", "Segunda Guerra Mundial"),
+    # Todas as provas no mesmo dia: 09/06/2026
+    (1, "Engenharia de Dados", "2026-06-09", "Modelagem de dados, SQL e processos de ETL"),
+    (1, "Engenharia de Soluções", "2026-06-09", "Lógica de programação em Python: variáveis, condicionais, laços e funções"),
+    (1, "Fundamentos da Computação e Infraestrutura", "2026-06-09", "Arquitetura de computadores, sistemas operacionais e redes"),
+    # Apresentação do projeto no dia seguinte: 10/06/2026
+    (1, "Projeto Integrador", "2026-06-10", "Apresentação final do projeto"),
 ])
 
 # Diego (2) e Tiago (3): mesmas matérias do André (colunas iguais), mas notas/faltas próprias (linhas diferentes)
