@@ -34,9 +34,7 @@ cursor.executescript("""
         PRIMARY KEY (aluno_id, materia),
         FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE
     );
-
-    -- Login do sistema. A senha é guardada como HASH, nunca em texto puro.
-    -- aluno_id liga um login de aluno ao seu registro na tabela alunos (NULL para professor).
+                     
     CREATE TABLE IF NOT EXISTS usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,

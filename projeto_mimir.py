@@ -13,8 +13,8 @@ import os
 load_dotenv() # carrega as variáveis do .env
 
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434") # URL do Ollama (local por padrão)
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:20b-cloud") # modelo do Ollama
+OLLAMA_URL = os.getenv("ollama_url") # URL do Ollama (local por padrão)
+OLLAMA_MODEL = os.getenv("ollama_model") # modelo do Ollama
 NGROK_TOKEN  = os.getenv("ngrok_token", "") # token do ngrok (opcional)
 CAMINHO_BANCO = "universidade.db" # nome do arquivo do banco em um só lugar
 LIMITE_CARACTERES_PERGUNTA = 500 # tamanho máximo da pergunta
@@ -144,7 +144,6 @@ def historico_do(id_aluno):
 
 
 def condicionais(pergunta, id_aluno):
-    """Valida a pergunta, monta o contexto com os dados do aluno e consulta a IA (Ollama)."""
     if not pergunta or not pergunta.strip():
         return {"tipo": "resposta", "texto": "Por favor, digite uma pergunta."}
 
