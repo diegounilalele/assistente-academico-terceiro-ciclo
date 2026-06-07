@@ -9,6 +9,7 @@ import requests # requisições HTTP à API do Ollama
 import re
 import json
 import os
+import time # esperar o ngrok liberar o domínio entre as tentativas
 
 load_dotenv() # carrega as variáveis do .env
 
@@ -16,9 +17,9 @@ load_dotenv() # carrega as variáveis do .env
 OLLAMA_URL = os.getenv("ollama_url") # URL do Ollama (local por padrão)
 OLLAMA_MODEL = os.getenv("ollama_model") # modelo do Ollama
 NGROK_TOKEN  = os.getenv("ngrok_token", "") # token do ngrok (opcional)
+NGROK_API_KEY = os.getenv("ngrok_api_key", "") # chave da API do ngrok (opcional) p/ derrubar sessões presas
 CAMINHO_BANCO = "universidade.db" # nome do arquivo do banco em um só lugar
 LIMITE_CARACTERES_PERGUNTA = 500 # tamanho máximo da pergunta
-ALUNO_PADRAO = 1 # aluno usado em modo demonstração
 
 servidor = Flask(__name__)
 servidor.secret_key = os.getenv("SEGREDOSEGREDO", "bologna") # chave que assina os cookies de sessão
@@ -52,14 +53,6 @@ def apenas_professor(rota):
             return jsonify({"status": "erro", "mensagem": "Acesso negado. Apenas professores."}), 403
         return rota(*args, **kwargs)
     return protegida
-
-
-def aluno_atual():
-    if session.get("aluno_id"):
-        return session["aluno_id"]
-    if session.get("usuario_tipo") == "professor":
-        return request.args.get("aluno_id", ALUNO_PADRAO, type=int)
-    return None
 
 
 def buscar_dados_aluno(id_aluno):
@@ -136,14 +129,100 @@ def buscar_dados_aluno(id_aluno):
         "notas_por_materia": notas_por_materia,
     }
 
-# Histórico separado por aluno (cada aluno tem a sua conversa em memória)
-historicos = {}
+def inicializar_banco():
+    """Cria as tabelas do chat (histórico e conversas salvas) se não existirem e
+    aplica pequenas migrações. Roda no início; é idempotente (pode rodar sempre)."""
+    with conectar_db() as conexao:
+        conexao.execute("""
+            CREATE TABLE IF NOT EXISTS historico_chat (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario_id INTEGER,
+                role TEXT,
+                conteudo TEXT,
+                data_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+            )
+        """)
+        # Lista de conversas da barra lateral, salva por usuário (em JSON).
+        # Chave = usuario_id (funciona pra todos, inclusive professor); aluno_id
+        # registra de qual aluno é a conversa (fica NULL para o professor).
+        conexao.execute("""
+            CREATE TABLE IF NOT EXISTS conversas_salvas (
+                usuario_id INTEGER PRIMARY KEY,
+                aluno_id INTEGER,
+                dados TEXT,
+                atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+            )
+        """)
+        # Migração: bancos que já tinham a tabela sem a coluna aluno_id ganham ela agora.
+        colunas = [c["name"] for c in conexao.execute("PRAGMA table_info(conversas_salvas)").fetchall()]
+        if "aluno_id" not in colunas:
+            conexao.execute("ALTER TABLE conversas_salvas ADD COLUMN aluno_id INTEGER")
 
-def historico_do(id_aluno):
-    return historicos.setdefault(id_aluno, [])
+
+# Histórico de conversa por conta de login (usuario_id), agora guardado no banco.
+def historico_do(id_usuario):
+    """Devolve as últimas mensagens da conversa deste usuário, em ordem cronológica."""
+    if not id_usuario:
+        return []
+    with conectar_db() as conexao:
+        linhas = conexao.execute(
+            "SELECT role, conteudo FROM historico_chat WHERE usuario_id = ? ORDER BY id DESC LIMIT 10",
+            (id_usuario,)
+        ).fetchall()
+    # vieram do mais novo para o mais antigo; inverte para ficar na ordem da conversa
+    return [{"role": linha["role"], "content": linha["conteudo"]} for linha in reversed(linhas)]
 
 
-def condicionais(pergunta, id_aluno):
+def salvar_mensagem(id_usuario, role, conteudo):
+    """Grava uma mensagem (do usuário ou da IA) no histórico do banco."""
+    if not id_usuario:
+        return
+    with conectar_db() as conexao:
+        conexao.execute(
+            "INSERT INTO historico_chat (usuario_id, role, conteudo) VALUES (?, ?, ?)",
+            (id_usuario, role, conteudo)
+        )
+
+
+def texto_dados_aluno(dados):
+    """Transforma os dados já calculados do aluno num resumo em texto para a IA usar como contexto."""
+    linhas = [f"Nome do aluno: {dados['nome']}"]
+
+    if dados["medias"]:
+        linhas.append("\nNotas e médias por matéria:")
+        for materia, media in dados["medias"].items():
+            notas = ", ".join(str(n) for n in dados["notas_por_materia"][materia])
+            linhas.append(f"  - {materia}: notas [{notas}] | média {round(media, 2)}")
+
+    if dados["necessario_para_passar"]:
+        linhas.append("\nO que falta para fechar média 6.0:")
+        for materia, valor in dados["necessario_para_passar"].items():
+            if valor == "Média atingida":
+                linhas.append(f"  - {materia}: média já atingida")
+            else:
+                linhas.append(f"  - {materia}: precisa tirar {valor} na próxima avaliação")
+
+    if dados["faltas"]:
+        linhas.append("\nFaltas por matéria:")
+        for materia, info in dados["faltas"].items():
+            linhas.append(f"  - {materia}: {info['faltas']}/{info['total']} aulas ({info['percentual']}%) - {info['situacao']}")
+
+    if dados["alertas_faltas"]:
+        linhas.append("\nAlertas de frequência:")
+        for alerta in dados["alertas_faltas"]:
+            linhas.append(f"  - {alerta}")
+
+    if dados["provas"]:
+        linhas.append("\nProvas agendadas:")
+        for p in dados["provas"]:
+            linhas.append(f"  - {p['materia']} em {p['data']}: {p['conteudo']}")
+
+    return "\n".join(linhas)
+
+
+def condicionais(pergunta, id_usuario, id_aluno, eh_professor=False):
     if not pergunta or not pergunta.strip():
         return {"tipo": "resposta", "texto": "Por favor, digite uma pergunta."}
 
@@ -151,38 +230,56 @@ def condicionais(pergunta, id_aluno):
     if len(pergunta) > LIMITE_CARACTERES_PERGUNTA:
         return {"tipo": "resposta", "texto": f"Pergunta muito longa. O limite é {LIMITE_CARACTERES_PERGUNTA} caracteres."}
 
-    historico_conversa = historico_do(id_aluno)
-    historico_conversa.append({"role": "user", "content": pergunta})
+    # Histórico é por conta de login (id_usuario) e vem do banco (sobrevive a reinícios).
+    # historico_anterior = só o que já foi gravado; mensagens = inclui a pergunta atual.
+    historico_anterior = historico_do(id_usuario)
+    mensagens = historico_anterior + [{"role": "user", "content": pergunta}]
 
-    # Mantém só as últimas 10 mensagens para não estourar o contexto da IA
-    if len(historico_conversa) > 10:
-        del historico_conversa[:-10]
+    # Monta o contexto que a IA vai conhecer sobre quem está conversando.
+    if eh_professor:
+        # Professor não é aluno: não tem notas/faltas próprias e não impersonamos nenhum aluno.
+        contexto_usuario = (
+            "O usuário logado é um PROFESSOR (não um aluno). "
+            "Ele não possui nome de aluno, notas, faltas ou provas próprias. "
+            "Trate-o como professor e ajude com dúvidas de tecnologia e sobre o uso do sistema."
+        )
+    else:
+        # Aluno: por privacidade, só entregamos os dados DESTE aluno (não os de outros).
+        dados_aluno = buscar_dados_aluno(id_aluno) if id_aluno else None
+        contexto_usuario = (
+            texto_dados_aluno(dados_aluno) if dados_aluno
+            else "Não há dados acadêmicos vinculados a este usuário."
+        )
 
     sabio = f"""
-Você é um assistente especialista em tecnologia. Responda de forma clara e direta APENAS o que for perguntado.
+Você é o assistente virtual de um sistema acadêmico universitário. Você conhece as informações de quem está logado (abaixo) e também domina assuntos de tecnologia. Responda de forma clara e direta APENAS o que for perguntado.
 
-Você domina todos os assuntos de tecnologia, incluindo:
+=== INFORMAÇÕES SOBRE O USUÁRIO LOGADO (use para responder sobre nome, notas, médias, faltas e provas) ===
+{contexto_usuario}
+=== FIM DAS INFORMAÇÕES ===
+
+Regras sobre os dados pessoais:
+- Quando perguntarem sobre o próprio nome, notas, médias, faltas, provas ou o que falta para passar, responda usando EXATAMENTE as informações acima.
+- Não invente nada que não esteja nas informações acima. Se não estiver lá, diga que não tem essa informação.
+- Você só conhece os dados deste usuário. Não tem acesso aos dados de outros alunos.
+
+Você também domina todos os assuntos de tecnologia, incluindo:
 Programação (Python, JavaScript, C, Java, SQL, e qualquer outra linguagem)
 Banco de dados, APIs, servidores e redes
 Inteligência artificial e machine learning
 Hardware, sistemas operacionais e segurança
 Desenvolvimento web, mobile e desktop
 DevOps, cloud e ferramentas de desenvolvimento
-Qualquer outro assunto relacionado a tecnologia
+Para perguntas de tecnologia, responda de forma técnica e didática.
 
-Histórico recente da conversa: {json.dumps(historico_conversa[:-1], ensure_ascii=False)}
+Histórico recente da conversa: {json.dumps(historico_anterior, ensure_ascii=False)}
 
-Pergunta do aluno: "{pergunta}"
+Pergunta do usuário: "{pergunta}"
 
 Responda SOMENTE com um JSON válido, sem texto extra:
 {{"tipo": "resposta", "texto": "<sua resposta aqui>"}}
 Caso não for um json válido, responda:
 {{"tipo": "resposta", "texto": "Desculpe, não consigo responder essa pergunta."}}
-
-Importante:
-Responda apenas o que for perguntado e não faça cálculos nem suponha dados do aluno.
-Para perguntas sobre notas, faltas ou desempenho, diga que já existe uma aba específica para isso no sistema.
-Para perguntas de tecnologia, responda de forma técnica e didática.
 """
     try:
         resposta = requests.post(
@@ -191,7 +288,7 @@ Para perguntas de tecnologia, responda de forma técnica e didática.
                 "model": OLLAMA_MODEL,
                 "messages": [
                     {"role": "system", "content": sabio}, # instruções do assistente
-                    *historico_conversa # histórico da conversa
+                    *mensagens # histórico anterior + pergunta atual
                 ],
                 "stream": False,
                 "keep_alive": "30m"  # mantém o modelo na RAM por 30 min (evita recarregar a cada pergunta)
@@ -203,7 +300,9 @@ Para perguntas de tecnologia, responda de forma técnica e didática.
         texto = re.sub(r"```json|```", "", texto).strip() # tira blocos de código caso o modelo use
         resultado = json.loads(texto)
 
-        historico_conversa.append({"role": "assistant", "content": resultado.get("texto", "")})
+        # Só grava no banco quando a IA respondeu com sucesso (pergunta + resposta).
+        salvar_mensagem(id_usuario, "user", pergunta)
+        salvar_mensagem(id_usuario, "assistant", resultado.get("texto", ""))
         return resultado
 
     except requests.exceptions.ConnectionError:
@@ -213,8 +312,6 @@ Para perguntas de tecnologia, responda de forma técnica e didática.
     except Exception as e:
         return {"tipo": "resposta", "texto": f"Erro ao consultar IA: {str(e)}"}
 
-
-# ───────────────────────── ROTAS: PÁGINA E SESSÃO ─────────────────────────
 
 @servidor.route("/")
 def index():
@@ -276,7 +373,7 @@ def sessao():
 @login_obrigatorio
 def dados_aluno_route():
     """Entrega ao HTML todos os dados já calculados do aluno logado."""
-    id_aluno = aluno_atual()
+    id_aluno = session.get("aluno_id")  # professor não tem aluno vinculado -> None
     if id_aluno is None:
         return jsonify({"status": "erro", "mensagem": "Sua conta não está vinculada a um aluno."}), 400
 
@@ -293,15 +390,49 @@ def dados_aluno_route():
 def perguntar():
     dados = request.get_json() or {}
     pergunta = dados.get("pergunta", "")
-    return jsonify(condicionais(pergunta, aluno_atual()))
+    eh_professor = session.get("usuario_tipo") == "professor"
+    # id_usuario = chave do histórico (por conta); aluno_id = de quem buscar os dados (None para professor).
+    return jsonify(condicionais(pergunta, session.get("usuario_id"), session.get("aluno_id"), eh_professor))
 
 
 @servidor.route("/resetar", methods=["POST"])
 @login_obrigatorio
 def resetar():
-    """Limpa o histórico de conversa do aluno logado."""
-    historicos[aluno_atual()] = []
+    """Limpa o histórico de conversa do usuário logado (apaga do banco)."""
+    with conectar_db() as conexao:
+        conexao.execute("DELETE FROM historico_chat WHERE usuario_id = ?", (session.get("usuario_id"),))
     return jsonify({"status": "ok", "mensagem": "Histórico resetado."})
+
+
+@servidor.route("/conversas", methods=["GET"])
+@login_obrigatorio
+def obter_conversas():
+    """Devolve a lista de conversas salvas do usuário logado (para a barra lateral)."""
+    with conectar_db() as conexao:
+        linha = conexao.execute(
+            "SELECT dados FROM conversas_salvas WHERE usuario_id = ?",
+            (session.get("usuario_id"),)
+        ).fetchone()
+    conversas = json.loads(linha["dados"]) if linha and linha["dados"] else []
+    return jsonify({"status": "sucesso", "conversas": conversas})
+
+
+@servidor.route("/conversas", methods=["POST"])
+@login_obrigatorio
+def salvar_conversas():
+    """Salva (substitui) a lista de conversas do usuário logado. Chamado pelo front
+    a cada mensagem nova / conversa arquivada, então nada se perde ao fechar o servidor."""
+    dados = request.get_json() or {}
+    conversas = dados.get("conversas", [])
+    with conectar_db() as conexao:
+        conexao.execute(
+            "INSERT INTO conversas_salvas (usuario_id, aluno_id, dados, atualizado_em) "
+            "VALUES (?, ?, ?, CURRENT_TIMESTAMP) "
+            "ON CONFLICT(usuario_id) DO UPDATE SET "
+            "aluno_id = excluded.aluno_id, dados = excluded.dados, atualizado_em = CURRENT_TIMESTAMP",
+            (session.get("usuario_id"), session.get("aluno_id"), json.dumps(conversas, ensure_ascii=False))
+        )
+    return jsonify({"status": "sucesso"})
 
 
 @servidor.route("/cadastrar_nota", methods=["POST"])
@@ -321,115 +452,6 @@ def cadastrar_nota():
             (id_aluno, materia, nota)
         )
     return jsonify({"status": "sucesso", "mensagem": f"Nota cadastrada para o aluno {id_aluno}!"})
-
-
-@servidor.route("/cadastrar_aluno", methods=["POST"])
-@apenas_professor
-def cadastrar_aluno():
-    dados = request.get_json() or {}
-    novo_id = dados.get("id")
-    novo_nome = dados.get("nome")
-
-    if not novo_id or not novo_nome:
-        return jsonify({"status": "erro", "mensagem": "Dados incompletos."}), 400
-
-    try:
-        with conectar_db() as conexao:
-            conexao.execute("INSERT INTO alunos (id, nome) VALUES (?, ?)", (novo_id, novo_nome))
-        return jsonify({"status": "sucesso", "mensagem": f"Aluno {novo_nome} cadastrado!"})
-    except sqlite3.IntegrityError:
-        return jsonify({"status": "erro", "mensagem": f"O ID {novo_id} já está em uso."}), 409
-
-
-@servidor.route("/atualizar_aluno", methods=["POST"])
-@apenas_professor
-def atualizar_aluno():
-    dados = request.get_json() or {}
-    id_aluno = dados.get("id")
-    novo_nome = dados.get("nome")
-
-    if not id_aluno or not novo_nome:
-        return jsonify({"status": "erro", "mensagem": "Dados incompletos."}), 400
-
-    with conectar_db() as conexao:
-        conexao.execute("UPDATE alunos SET nome = ? WHERE id = ?", (novo_nome, id_aluno))
-    return jsonify({"status": "sucesso", "mensagem": "Nome do aluno atualizado!"})
-
-
-@servidor.route("/deletar_aluno", methods=["POST"])
-@apenas_professor
-def deletar_aluno():
-    dados = request.get_json() or {}
-    id_aluno = dados.get("id")
-
-    if not id_aluno:
-        return jsonify({"status": "erro", "mensagem": "Informe o ID do aluno."}), 400
-
-    # Com PRAGMA foreign_keys = ON (ligado no conectar_db), apagar o aluno apaga
-    # em cascata as notas, faltas e provas dele.
-    with conectar_db() as conexao:
-        conexao.execute("DELETE FROM alunos WHERE id = ?", (id_aluno,))
-    return jsonify({"status": "sucesso", "mensagem": "Aluno e seus registros foram apagados!"})
-
-
-@servidor.route("/cadastrar_falta", methods=["POST"])
-@apenas_professor
-def cadastrar_falta():
-    dados = request.get_json() or {}
-    id_aluno = dados.get("aluno_id")
-    materia = dados.get("materia")
-    faltas = dados.get("faltas")
-    total_aulas = dados.get("total_aulas")
-
-    if not id_aluno or not materia or faltas is None or not total_aulas:
-        return jsonify({"status": "erro", "mensagem": "Dados incompletos. Informe ID, matéria, faltas e total de aulas."}), 400
-
-    try:
-        with conectar_db() as conexao:
-            conexao.execute(
-                "INSERT INTO faltas (aluno_id, materia, faltas, total_aulas) VALUES (?, ?, ?, ?)",
-                (id_aluno, materia, faltas, total_aulas)
-            )
-        return jsonify({"status": "sucesso", "mensagem": f"Faltas cadastradas para o aluno {id_aluno} em {materia}!"})
-    except Exception as e:
-        return jsonify({"status": "erro", "mensagem": f"Erro ao cadastrar falta: {str(e)}"}), 500
-
-
-@servidor.route("/relatorio_geral", methods=["POST"])
-@apenas_professor
-def relatorio_geral():
-    with conectar_db() as conexao:
-        cursor = conexao.cursor()
-        cursor.execute("SELECT id, nome FROM alunos ORDER BY id")
-        alunos = cursor.fetchall()
-
-        if not alunos:
-            return jsonify({"status": "sucesso", "relatorio": "Nenhum aluno cadastrado no sistema."})
-
-        texto = "=== RELATORIO GERAL DA UNIVERSIDADE ===\n\n"
-        for aluno in alunos:
-            id_aluno, nome = aluno["id"], aluno["nome"]
-            texto += f"MATRICULA [{id_aluno}] - {nome.upper()}\n"
-
-            cursor.execute("SELECT materia, nota FROM notas WHERE aluno_id = ?", (id_aluno,))
-            notas = cursor.fetchall()
-            if notas:
-                texto += "  Notas:\n"
-                for n in notas:
-                    texto += f"     - {n['materia']}: {n['nota']}\n"
-            else:
-                texto += "  Notas: (Nenhuma nota lançada)\n"
-
-            cursor.execute("SELECT materia, faltas FROM faltas WHERE aluno_id = ?", (id_aluno,))
-            faltas = cursor.fetchall()
-            if faltas:
-                texto += "  Faltas:\n"
-                for fa in faltas:
-                    texto += f"     - {fa['materia']}: {fa['faltas']} faltas\n"
-
-            texto += "---------------------------------------\n"
-
-    return jsonify({"status": "sucesso", "relatorio": texto})
 
 
 @servidor.route("/todos_alunos", methods=["GET"])
@@ -468,6 +490,7 @@ def todos_alunos():
             "em_risco": sorted(em_risco),
             "medias": dados["medias"],
             "faltas": dados["faltas"],
+            "notas_por_materia": dados["notas_por_materia"],  # todas as notas, para o professor ver cada uma
         })
 
     total = len(alunos)
@@ -481,18 +504,76 @@ def todos_alunos():
     return jsonify({"status": "sucesso", "alunos": alunos, "resumo": resumo})
 
 
+def liberar_sessoes_ngrok(api_key):
+    """Usa a API do ngrok para liberar o domínio reservado antes de conectar:
+    1) encerra sessões de agente antigas; 2) apaga 'cloud endpoints' fixos que ficam
+    segurando o domínio sem depender de agente. Resolve o 'already online' (ERR_NGROK_334).
+    Obs.: se um dia você quiser usar um cloud endpoint de propósito, remova o passo (2)."""
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Ngrok-Version": "2",
+        "Content-Type": "application/json",
+    }
+    try:
+        # (1) encerra sessões de agente (cada uma leva junto seus túneis efêmeros)
+        sessoes = requests.get(
+            "https://api.ngrok.com/tunnel_sessions", headers=headers, timeout=15
+        ).json().get("tunnel_sessions", [])
+        for sessao in sessoes:
+            sid = sessao.get("id")
+            if sid:
+                requests.post(
+                    f"https://api.ngrok.com/tunnel_sessions/{sid}/stop",
+                    headers=headers, json={"id": sid}, timeout=15
+                )
+
+        # (2) apaga cloud endpoints fixos (não dependem de agente e bloqueiam o domínio)
+        endpoints = requests.get(
+            "https://api.ngrok.com/endpoints", headers=headers, timeout=15
+        ).json().get("endpoints", [])
+        apagados = 0
+        for ep in endpoints:
+            if ep.get("type") == "cloud" and ep.get("id"):
+                requests.delete(f"https://api.ngrok.com/endpoints/{ep['id']}", headers=headers, timeout=15)
+                apagados += 1
+
+        if sessoes or apagados:
+            print(f"ngrok: dominio liberado (sessoes encerradas: {len(sessoes)}, cloud endpoints apagados: {apagados}).")
+    except Exception as e:
+        print(f"ngrok: nao consegui limpar pela API ({e}). Tentando conectar mesmo assim.")
+
+
+def conectar_ngrok(tentativas=4, espera=3):
+    """Abre o túnel do ngrok com algumas tentativas: depois de encerrar a sessão antiga,
+    o ngrok leva alguns segundos para liberar o domínio."""
+    ultimo_erro = None
+    for tentativa in range(tentativas):
+        try:
+            return ngrok.connect(5000)
+        except Exception as e:
+            ultimo_erro = e
+            if tentativa < tentativas - 1:
+                time.sleep(espera)
+    raise ultimo_erro
+
+
+inicializar_banco()  # garante a tabela do histórico (roda tanto ao executar quanto ao importar)
+
+
 if __name__ == "__main__": # Verifica se este arquivo está sendo executado diretamente (python projeto_mimir.py) ou importado por outro (import projeto_mimir)
     usar_ngrok = os.getenv("USAR_NGROK", "false").lower() == "true"
 
     if usar_ngrok:
         if NGROK_TOKEN:
             ngrok.set_auth_token(NGROK_TOKEN)
+        if NGROK_API_KEY:
+            liberar_sessoes_ngrok(NGROK_API_KEY)  # derruba sessões presas antes de conectar
         try:
-            ngrok.kill()  # fecha túneis abertos numa execução anterior
-            tunnel = ngrok.connect(5000)
+            ngrok.kill()  # fecha túneis abertos por este processo numa execução anterior
+            tunnel = conectar_ngrok()
             print(f"\nURL pública (ngrok): {tunnel.public_url}\n")
         except Exception as e:
-            print(f"\nAviso: ngrok falhou ({e}). Rodando só local.\n")
+            print(f"\nAviso: ngrok falhou ({e}). Rodando só local em http://localhost:5000\n")
     else:
         print("\nServidor local: http://localhost:5000\n")
 

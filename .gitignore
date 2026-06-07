@@ -1,5 +1,6 @@
 .env
 *.db
+*lauch.json
 .vscode/
 __pycache__/
 *.pyc

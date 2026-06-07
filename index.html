@@ -82,6 +82,26 @@
       white-space: nowrap;
     }
 
+    .btn-nova-conversa {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 0 12px 16px;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #1a120a;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-nova-conversa:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-nova-conversa svg { width: 16px; height: 16px; }
+
     .sidebar-section {
       padding: 0 12px;
       margin-bottom: 24px;
@@ -841,6 +861,8 @@
     .msg.ai .bubble {
       background: var(--ai-bubble); border: 1px solid var(--border);
       border-top-left-radius: 4px; color: var(--text);
+      text-align: justify;   /* respostas da IA com texto justificado */
+      hyphens: auto;         /* quebra palavras p/ evitar buracos no justificado (usa lang="pt-BR") */
     }
 
     .msg.ai .bubble.typing { color: var(--text-muted); font-style: italic; }
@@ -1122,6 +1144,11 @@
     </div>
     <span>Mímir</span>
   </div>
+
+  <button class="btn-nova-conversa" onclick="novaConversa()" title="Começar uma nova conversa">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Nova conversa
+  </button>
 
   <div class="sidebar-section">
     <p class="sidebar-section-title">Menu</p>
@@ -1458,17 +1485,20 @@
     if (name === 'professor') renderProfessor();
   }
 
-  function voltarHome() {
+  // Botão "Nova conversa": arquiva a conversa atual no histórico, limpa a tela
+  // e zera o contexto da IA no servidor para começar do zero.
+  async function novaConversa() {
     if (conversaAtual && conversaAtual.mensagens.length > 0) {
       const jaExiste = historico.find(h => h === conversaAtual);
-      if (!jaExiste) {
-        historico.unshift(conversaAtual);
-        renderHistorico();
-      }
+      if (!jaExiste) { historico.unshift(conversaAtual); renderHistorico(); }
     }
     conversaAtual = null;
     document.getElementById('messages').innerHTML = '';
-    showView('assistente');
+    salvarConversas();                       // persiste a conversa recém-arquivada no banco
+    try { await fetch('/resetar', { method: 'POST' }); } catch (e) {}  // limpa a memória da IA
+    showView('assistente');                 // como conversaAtual é null, volta para a home
+    const inp = document.getElementById('home-input');
+    if (inp) inp.focus();
   }
 
   // ── LOGIN / SESSÃO ──
@@ -1524,6 +1554,7 @@
     document.getElementById('section-academico').style.display = ehProfessor ? 'none' : 'block';
 
     carregarDados();
+    carregarConversasSalvas();   // traz a lista de conversas salvas deste usuário
     // Professor já começa no painel com todos os alunos
     if (ehProfessor) showView('professor');
   }
@@ -1543,6 +1574,12 @@
   async function fazerLogout() {
     try { await fetch('/logout', { method: 'POST' }); } catch (e) {}
     dadosAluno = null;
+    // Limpa a conversa e o histórico da TELA, para o próximo usuário que logar
+    // neste navegador não ver as conversas do usuário anterior.
+    historico = [];
+    conversaAtual = null;
+    document.getElementById('messages').innerHTML = '';
+    renderHistorico();
     document.body.classList.add('deslogado');
     document.getElementById('login-pass').value = '';
     document.getElementById('login-error').textContent = '';
@@ -1653,8 +1690,9 @@
       const media = d.medias[m] ? d.medias[m].toFixed(1) : '—';
       const fInfo = d.faltas[m];
       const sit = badgeSituacao(d.medias[m] || 0, fInfo ? fInfo.situacao : 'ok');
-      const celulasNotas = notas.map(n => `<td>${n}</td>`).join('');
-      return `<tr><td>${m}</td>${celulasNotas}<td><strong style="color:${corMedia(d.medias[m]||0)}">${media}</strong></td><td>${sit}</td></tr>`;
+      // Todas as notas numa única célula, separadas por vírgula (alinha com o cabeçalho).
+      const todasNotas = notas.length ? notas.join(', ') : '—';
+      return `<tr><td>${m}</td><td>${todasNotas}</td><td><strong style="color:${corMedia(d.medias[m]||0)}">${media}</strong></td><td>${sit}</td></tr>`;
     }).join('');
 
     const barras = materias.map(m => {
@@ -1819,6 +1857,34 @@
         return;
       }
 
+      // Formulário para o professor lançar nota em qualquer aluno.
+      // O <select> lista os alunos e o <datalist> sugere as matérias já existentes.
+      const opcoesAlunos = json.alunos.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
+      const materiasSet = new Set();
+      json.alunos.forEach(a => Object.keys(a.medias).forEach(m => materiasSet.add(m)));
+      const opcoesMaterias = [...materiasSet].sort().map(m => `<option value="${m}"></option>`).join('');
+      const formLancarNota = `
+        <div class="table-wrap" style="padding:16px 18px;">
+          <div class="table-title" style="padding:0 0 12px;">Lançar nota</div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Aluno</label>
+              <select id="nota-aluno" class="config-input">${opcoesAlunos}</select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Matéria</label>
+              <input id="nota-materia" class="config-input" list="lista-materias" placeholder="Ex: Engenharia de Dados">
+              <datalist id="lista-materias">${opcoesMaterias}</datalist>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Nota</label>
+              <input id="nota-valor" class="config-input" type="number" min="0" max="10" step="0.1" placeholder="0–10" style="min-width:90px;">
+            </div>
+            <button class="btn-config-save" style="padding:9px 20px;" onclick="lancarNota()">Lançar nota</button>
+          </div>
+          <div id="nota-feedback" style="font-size:12.5px;margin-top:10px;min-height:16px;"></div>
+        </div>`;
+
       // Cards-resumo da turma
       const r = json.resumo;
       const resumoCards = `
@@ -1852,30 +1918,67 @@
           </table>
         </div>`;
 
-      // Detalhamento: as matérias de cada aluno
+      // Detalhamento: as matérias de cada aluno, agora com TODAS as notas lançadas
       const detalhes = json.alunos.map(a => {
+        const notasMat = a.notas_por_materia || {};
         const linhasMat = Object.keys(a.medias).map(m => {
           const media = a.medias[m];
           const f = a.faltas[m];
           const freq = f ? Math.round(((f.total - f.faltas) / f.total) * 100) + '%' : '—';
           const sit = badgeSituacao(media, f ? f.situacao : 'ok');
-          return `<tr><td>${m}</td><td><strong style="color:${corMedia(media)}">${media.toFixed(1)}</strong></td><td>${freq}</td><td>${sit}</td></tr>`;
+          const notas = (notasMat[m] && notasMat[m].length) ? notasMat[m].join(', ') : '—';
+          return `<tr><td>${m}</td><td>${notas}</td><td><strong style="color:${corMedia(media)}">${media.toFixed(1)}</strong></td><td>${freq}</td><td>${sit}</td></tr>`;
         }).join('');
         return `
           <div class="table-wrap">
             <div class="table-title">${a.nome} · média ${a.media_geral.toFixed(1)} · frequência ${a.frequencia_geral}%</div>
             <table class="data-table">
-              <thead><tr><th>Disciplina</th><th>Média</th><th>Frequência</th><th>Situação</th></tr></thead>
+              <thead><tr><th>Disciplina</th><th>Notas lançadas</th><th>Média</th><th>Frequência</th><th>Situação</th></tr></thead>
               <tbody>${linhasMat}</tbody>
             </table>
           </div>`;
       }).join('');
 
-      cont.innerHTML = resumoCards + tabelaGeral
+      cont.innerHTML = formLancarNota + resumoCards + tabelaGeral
         + `<div class="page-header" style="margin:24px 0 16px;"><h2 style="font-size:16px;">Detalhamento por Aluno</h2></div>`
         + detalhes;
     } catch (e) {
       cont.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Erro ao conectar com o servidor. Verifique se o Flask está rodando.</p>';
+    }
+  }
+
+  // Professor lança uma nota num aluno e o painel recarrega já com a nota nova.
+  async function lancarNota() {
+    const aluno_id = Number(document.getElementById('nota-aluno').value);
+    const materia = document.getElementById('nota-materia').value.trim();
+    const nota = parseFloat(document.getElementById('nota-valor').value);
+    const fb = document.getElementById('nota-feedback');
+
+    if (!aluno_id || !materia || isNaN(nota)) {
+      fb.style.color = '#f87171';
+      fb.textContent = 'Preencha aluno, matéria e nota.';
+      return;
+    }
+    if (nota < 0 || nota > 10) {
+      fb.style.color = '#f87171';
+      fb.textContent = 'A nota deve estar entre 0 e 10.';
+      return;
+    }
+
+    try {
+      const res = await chamarFlask('/cadastrar_nota', { aluno_id, materia, nota });
+      if (res.status === 'sucesso') {
+        // Recarrega o painel (reconstrói o formulário) e depois mostra o sucesso.
+        await renderProfessor();
+        const fb2 = document.getElementById('nota-feedback');
+        if (fb2) { fb2.style.color = '#4ade80'; fb2.textContent = res.mensagem || 'Nota lançada!'; }
+      } else {
+        fb.style.color = '#f87171';
+        fb.textContent = res.mensagem || 'Não foi possível lançar a nota.';
+      }
+    } catch (e) {
+      fb.style.color = '#f87171';
+      fb.textContent = 'Erro ao conectar com o servidor.';
     }
   }
 
@@ -2176,6 +2279,36 @@
       if (conversaAtual) conversaAtual.mensagens.push({ role: 'ai', content: errMsg });
     }
     setLoading(false);
+    salvarConversas();   // persiste a conversa no banco a cada troca de mensagens
+  }
+
+  // ── PERSISTÊNCIA DAS CONVERSAS (por usuário, no banco) ──
+
+  // Junta a conversa ativa (se tiver mensagens) com as arquivadas e envia ao servidor.
+  async function salvarConversas() {
+    const lista = [];
+    if (conversaAtual && conversaAtual.mensagens.length > 0 && !historico.includes(conversaAtual)) {
+      lista.push(conversaAtual);
+    }
+    lista.push(...historico);
+    try {
+      await fetch('/conversas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversas: lista.slice(0, 50) })  // guarda no máx. as 50 mais recentes
+      });
+    } catch (e) { /* offline: ignora, tenta de novo na próxima mensagem */ }
+  }
+
+  // Carrega do banco a lista de conversas do usuário logado e mostra na barra lateral.
+  async function carregarConversasSalvas() {
+    try {
+      const res = await fetch('/conversas');
+      const data = await res.json();
+      historico = (data && data.conversas) ? data.conversas : [];
+      conversaAtual = null;
+      renderHistorico();
+    } catch (e) { /* offline: mantém vazio */ }
   }
 
   // ── INIT ──
