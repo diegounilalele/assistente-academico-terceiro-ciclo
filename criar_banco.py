@@ -1,4 +1,5 @@
 import sqlite3
+import random  # gerar notas/faltas variadas dos alunos extras
 from werkzeug.security import generate_password_hash  # transforma a senha em hash (vem junto do Flask)
 
 conn = sqlite3.connect("universidade.db")
@@ -189,6 +190,33 @@ else:
         (3, "Cidadania, Ética e Espiritualidade", 9, 40),
         (3, "Fundamentos Matemáticos para a Computação", 13, 40),
     ])
+
+    # ── 10 alunos extras (mesmo padrão: 5 matérias, 3 notas cada, faltas e as provas do aluno 1) ──
+    random.seed(2026)  # seed fixa: gera sempre os mesmos dados
+    materias_5 = [
+        "Engenharia de Dados",
+        "Engenharia de Soluções",
+        "Fundamentos da Computação e Infraestrutura",
+        "Cidadania, Ética e Espiritualidade",
+        "Fundamentos Matemáticos para a Computação",
+    ]
+    nomes_extras = ["Ana Souza", "Bruno Lima", "Carla Mendes", "Daniel Rocha", "Eduarda Alves",
+                    "Felipe Castro", "Gabriela Dias", "Henrique Nunes", "Isabela Pinto", "João Vitor"]
+    for i, nome in enumerate(nomes_extras):
+        matricula = str(2612401 + i)
+        cursor.execute("INSERT INTO alunos (nome) VALUES (?)", (nome,))
+        aid = cursor.lastrowid
+        cursor.execute("INSERT INTO usuarios (username, senha, tipo, aluno_id) VALUES (?, ?, 'aluno', ?)",
+                       (matricula, generate_password_hash("senha123"), aid))
+        for mat in materias_5:
+            for _ in range(3):
+                cursor.execute("INSERT INTO notas (aluno_id, materia, nota) VALUES (?, ?, ?)",
+                               (aid, mat, round(random.uniform(4.0, 9.5), 1)))
+            cursor.execute("INSERT OR IGNORE INTO faltas (aluno_id, materia, faltas, total_aulas) VALUES (?, ?, ?, 40)",
+                           (aid, mat, random.randint(0, 12)))
+        # mesmas provas do André (aluno 1)
+        cursor.execute("INSERT OR IGNORE INTO provas (aluno_id, materia, data, conteudo) "
+                       "SELECT ?, materia, data, conteudo FROM provas WHERE aluno_id = 1", (aid,))
 
     print("Banco criado e populado com os dados de exemplo.")
 

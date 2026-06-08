@@ -20,6 +20,7 @@ NGROK_TOKEN  = os.getenv("ngrok_token", "") # token do ngrok (opcional)
 NGROK_API_KEY = os.getenv("ngrok_api_key", "") # chave da API do ngrok (opcional) p/ derrubar sessões presas
 CAMINHO_BANCO = "universidade.db" # nome do arquivo do banco em um só lugar
 LIMITE_CARACTERES_PERGUNTA = 1000 # tamanho máximo da pergunta
+TOTAL_AULAS_PADRAO = 40 # total de aulas usado por padrão ao lançar faltas (não é mais escolhido na tela)
 
 servidor = Flask(__name__)
 servidor.secret_key = os.getenv("SEGREDOSEGREDO", "bologna") # chave que assina os cookies de sessão
@@ -182,6 +183,15 @@ def inicializar_banco():
             CREATE TABLE IF NOT EXISTS config (
                 chave TEXT PRIMARY KEY,
                 valor TEXT
+            )
+        """)
+        # Anotações pessoais (bloco de notas) de cada usuário, guardadas em JSON.
+        conexao.execute("""
+            CREATE TABLE IF NOT EXISTS anotacoes (
+                usuario_id INTEGER PRIMARY KEY,
+                dados TEXT,
+                atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
             )
         """)
 
@@ -523,6 +533,36 @@ def salvar_conversas():
     return jsonify({"status": "sucesso"})
 
 
+@servidor.route("/anotacoes", methods=["GET"])
+@login_obrigatorio
+def obter_anotacoes():
+    with conectar_db() as conexao:
+        linha = conexao.execute(
+            "SELECT dados FROM anotacoes WHERE usuario_id = ?",
+            (session.get("usuario_id"),)
+        ).fetchone()
+    anotacoes = json.loads(linha["dados"]) if linha and linha["dados"] else []
+    return jsonify({"status": "sucesso", "anotacoes": anotacoes})
+
+
+@servidor.route("/anotacoes", methods=["POST"])
+@login_obrigatorio
+def salvar_anotacoes():
+    """Salva (substitui) as anotações do usuário logado, em JSON. Chamado a cada
+    alteração no bloco de notas, então nada se perde ao fechar o servidor."""
+    dados = request.get_json() or {}
+    anotacoes = dados.get("anotacoes", [])
+    with conectar_db() as conexao:
+        conexao.execute(
+            "INSERT INTO anotacoes (usuario_id, dados, atualizado_em) "
+            "VALUES (?, ?, CURRENT_TIMESTAMP) "
+            "ON CONFLICT(usuario_id) DO UPDATE SET "
+            "dados = excluded.dados, atualizado_em = CURRENT_TIMESTAMP",
+            (session.get("usuario_id"), json.dumps(anotacoes, ensure_ascii=False))
+        )
+    return jsonify({"status": "sucesso"})
+
+
 @servidor.route("/cadastrar_nota", methods=["POST"])
 @apenas_professor
 def cadastrar_nota():
@@ -592,7 +632,7 @@ def todos_alunos():
         "alunos_em_risco": sum(1 for a in alunos if a["em_risco"]),
     }
 
-    return jsonify({"status": "sucesso", "alunos": alunos, "resumo": resumo, "nota_corte": corte})
+    return jsonify({"status": "sucesso", "alunos": alunos, "resumo": resumo, "nota_corte": corte, "total_aulas_padrao": TOTAL_AULAS_PADRAO})
 
 
 @servidor.route("/cadastrar_falta", methods=["POST"])
@@ -602,12 +642,12 @@ def cadastrar_falta():
     id_aluno = dados.get("aluno_id")
     materia = (dados.get("materia") or "").strip()
     faltas = dados.get("faltas")
-    total = dados.get("total_aulas")
+    total = dados.get("total_aulas") or TOTAL_AULAS_PADRAO   # usa o padrão quando não vem da tela
 
-    if not id_aluno or not materia or faltas is None or total is None:
-        return jsonify({"status": "erro", "mensagem": "Preencha aluno, matéria, faltas e total de aulas."}), 400
+    if not id_aluno or not materia or faltas is None:
+        return jsonify({"status": "erro", "mensagem": "Preencha aluno, matéria e faltas."}), 400
     if total <= 0 or faltas < 0 or faltas > total:
-        return jsonify({"status": "erro", "mensagem": "Faltas devem estar entre 0 e o total de aulas."}), 400
+        return jsonify({"status": "erro", "mensagem": f"Faltas devem estar entre 0 e {total}."}), 400
 
     # PK é (aluno_id, materia): INSERT OR REPLACE atualiza se já existir.
     with conectar_db() as conexao:
@@ -736,6 +776,28 @@ def resetar_senha():
     if cur.rowcount == 0:
         return jsonify({"status": "erro", "mensagem": "Esse aluno não tem um login para resetar."}), 404
     return jsonify({"status": "sucesso", "mensagem": "Senha redefinida!"})
+
+
+@servidor.route("/mudar_senha", methods=["POST"])
+@login_obrigatorio
+def mudar_senha():
+    """O próprio usuário logado troca a sua senha (confere a senha atual antes)."""
+    dados = request.get_json() or {}
+    atual = dados.get("senha_atual") or ""
+    nova = dados.get("senha_nova") or ""
+
+    if not atual or not nova:
+        return jsonify({"status": "erro", "mensagem": "Preencha a senha atual e a nova."}), 400
+    if len(nova) < 3:
+        return jsonify({"status": "erro", "mensagem": "A nova senha é muito curta."}), 400
+
+    uid = session.get("usuario_id")
+    with conectar_db() as conexao:
+        linha = conexao.execute("SELECT senha FROM usuarios WHERE id = ?", (uid,)).fetchone()
+        if not linha or not check_password_hash(linha["senha"], atual):
+            return jsonify({"status": "erro", "mensagem": "Senha atual incorreta."}), 403
+        conexao.execute("UPDATE usuarios SET senha = ? WHERE id = ?", (generate_password_hash(nova), uid))
+    return jsonify({"status": "sucesso", "mensagem": "Senha alterada com sucesso!"})
 
 
 @servidor.route("/observacao", methods=["POST"])

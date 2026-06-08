@@ -867,6 +867,20 @@
 
     .msg.ai .bubble.typing { color: var(--text-muted); font-style: italic; }
 
+    /* Animação de "pensando" do assistente: três pontinhos pulando */
+    .thinking-dots { display: inline-flex; align-items: center; gap: 5px; padding: 3px 0; }
+    .thinking-dots span {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent2);
+      animation: thinking 1.2s infinite ease-in-out both;
+    }
+    .thinking-dots span:nth-child(2) { animation-delay: 0.16s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.32s; }
+    @keyframes thinking {
+      0%, 80%, 100% { transform: scale(0.5); opacity: 0.35; }
+      40%           { transform: scale(1);   opacity: 1; }
+    }
+
     .msg.user .bubble {
       background: var(--user-bubble);
       border: 1px solid rgba(30,31,33,0.8);
@@ -1094,6 +1108,30 @@
       background: linear-gradient(90deg, var(--accent), transparent);
       border-radius: 2px;
     }
+
+    /* ── Notificações ── */
+    #notif-wrap { position: fixed; top: 16px; right: 22px; z-index: 60; }
+    #notif-bell {
+      position: relative; width: 40px; height: 40px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    #notif-bell:hover { background: var(--surface2); color: var(--text); }
+    #notif-badge {
+      position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px;
+      border-radius: 9px; background: #f87171; color: #fff; font-size: 11px; font-weight: 600;
+      display: none; align-items: center; justify-content: center; line-height: 1;
+    }
+    #notif-panel {
+      display: none; position: absolute; top: 48px; right: 0; width: 320px; max-height: 60vh; overflow-y: auto;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.38); padding: 8px;
+    }
+    #notif-panel .notif-title { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); padding: 8px 10px 6px; }
+    .notif-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 8px; font-size: 13px; color: var(--text); line-height: 1.4; }
+    .notif-item:hover { background: var(--surface2); }
+    .notif-empty { padding: 18px 10px; font-size: 13px; color: var(--text-muted); text-align: center; }
   </style>
 </head>
 <body class="deslogado">
@@ -1180,10 +1218,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Frequência
     </div>
-    <div class="sidebar-item" id="nav-disciplinas" onclick="showView('disciplinas')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      Disciplinas
-    </div>
   </div>
 
   <!-- PROFESSOR (só aparece para quem loga como professor) -->
@@ -1226,6 +1260,18 @@
 
 <!-- MAIN -->
 <main class="main">
+
+  <!-- Notificações (sino fixo no topo direito; só aparece para o aluno) -->
+  <div id="notif-wrap" style="display:none;">
+    <button id="notif-bell" onclick="toggleNotifPanel()" title="Notificações" aria-label="Notificações">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span id="notif-badge"></span>
+    </button>
+    <div id="notif-panel">
+      <div class="notif-title">Notificações</div>
+      <div id="notif-list"></div>
+    </div>
+  </div>
 
   <!-- ── ASSISTENTE (HOME + CHAT) ── -->
   <div class="home-view visible" id="home-view">
@@ -1373,14 +1419,6 @@
     <div id="frequencia-content"><p style="color:var(--text-muted);font-size:13px;">Carregando dados...</p></div>
   </div>
 
-  <!-- ── DISCIPLINAS ── -->
-  <div class="page-view" id="view-disciplinas">
-    <div class="page-header">
-      <h2>Disciplinas</h2>
-      <p>Matérias do semestre atual</p>
-    </div>
-    <div id="disciplinas-content"><p style="color:var(--text-muted);font-size:13px;">Carregando dados...</p></div>
-  </div>
 
   <!-- ── CONFIGURAÇÕES ── -->
   <div class="page-view" id="view-configuracoes">
@@ -1407,29 +1445,37 @@
       <div class="config-section-title">Notificações</div>
       <div class="config-row">
         <div><div class="config-row-label">Lembretes de prova</div><div class="config-row-sub">Alertar 2 dias antes</div></div>
-        <label class="toggle"><input type="checkbox" id="cfg-notif-prova" checked><span class="toggle-track"></span></label>
+        <label class="toggle"><input type="checkbox" id="cfg-notif-prova" checked onchange="salvarNotifPrefs()"><span class="toggle-track"></span></label>
       </div>
       <div class="config-row">
         <div><div class="config-row-label">Alerta de frequência</div><div class="config-row-sub">Avisar quando abaixo de 80%</div></div>
-        <label class="toggle"><input type="checkbox" id="cfg-notif-freq" checked><span class="toggle-track"></span></label>
+        <label class="toggle"><input type="checkbox" id="cfg-notif-freq" checked onchange="salvarNotifPrefs()"><span class="toggle-track"></span></label>
       </div>
       <div class="config-row">
         <div><div class="config-row-label">Resumo semanal</div><div class="config-row-sub">Relatório todo domingo</div></div>
-        <label class="toggle"><input type="checkbox" id="cfg-notif-resumo"><span class="toggle-track"></span></label>
+        <label class="toggle"><input type="checkbox" id="cfg-notif-resumo" onchange="salvarNotifPrefs()"><span class="toggle-track"></span></label>
       </div>
     </div>
     <div class="config-section">
-      <div class="config-section-title">Acadêmico</div>
+      <div class="config-section-title">Senha</div>
       <div class="config-row">
-        <div><div class="config-row-label">Nota mínima para aprovação</div></div>
-        <input class="config-input" type="number" id="cfg-nota-min" value="6.0" min="0" max="10" step="0.5" style="min-width:100px;">
+        <div><div class="config-row-label">Senha atual</div></div>
+        <input class="config-input" type="password" id="cfg-senha-atual" placeholder="••••••" autocomplete="current-password">
       </div>
       <div class="config-row">
-        <div><div class="config-row-label">Frequência mínima</div></div>
-        <input class="config-input" type="number" id="cfg-freq-min" value="75" min="0" max="100" style="min-width:100px;">
+        <div><div class="config-row-label">Nova senha</div></div>
+        <input class="config-input" type="password" id="cfg-senha-nova" placeholder="••••••" autocomplete="new-password">
+      </div>
+      <div class="config-row">
+        <div><div class="config-row-label">Confirmar nova senha</div></div>
+        <input class="config-input" type="password" id="cfg-senha-conf" placeholder="••••••" autocomplete="new-password">
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
+        <button class="btn-config-save" onclick="mudarSenha()">Alterar senha</button>
+        <span id="senha-feedback" style="font-size:12.5px;min-height:16px;"></span>
       </div>
     </div>
-    <button class="btn-config-save" onclick="salvarConfiguracoes()">Salvar alterações</button>
+    <button class="btn-config-save" id="btn-salvar-config" onclick="salvarConfiguracoes()">Salvar alterações</button>
   </div>
 
   <!-- ── PAINEL DO PROFESSOR ── -->
@@ -1445,7 +1491,7 @@
 
 <script>
   // ── NAVEGAÇÃO ──
-  const views = ['assistente','inicio','calendario','notas','desempenho','frequencia','disciplinas','configuracoes','professor'];
+  const views = ['assistente','inicio','calendario','notas','desempenho','frequencia','configuracoes','professor'];
   let currentView = 'assistente';
 
   function showView(name) {
@@ -1548,13 +1594,14 @@
 
     // Abas que mostram o desempenho PESSOAL não fazem sentido para um professor
     // (ele acompanha a turma, não a si mesmo). Some o "Início" e toda a seção "Acadêmico"
-    // (Desempenho, Frequência, Disciplinas) quando for professor.
+    // (Desempenho, Frequência) quando for professor.
     const navInicio = document.getElementById('nav-inicio');
     if (navInicio) navInicio.style.display = ehProfessor ? 'none' : 'flex';
     document.getElementById('section-academico').style.display = ehProfessor ? 'none' : 'block';
 
     carregarDados();
     carregarConversasSalvas();   // traz a lista de conversas salvas deste usuário
+    carregarAnotacoes();         // traz as anotações salvas deste usuário
     // Professor já começa no painel com todos os alunos
     if (ehProfessor) showView('professor');
   }
@@ -1578,8 +1625,12 @@
     // neste navegador não ver as conversas do usuário anterior.
     historico = [];
     conversaAtual = null;
+    notas = [];
+    notaAtualIndex = null;
     document.getElementById('messages').innerHTML = '';
     renderHistorico();
+    renderNotasList();
+    const nw = document.getElementById('notif-wrap'); if (nw) nw.style.display = 'none';
     document.body.classList.add('deslogado');
     document.getElementById('login-pass').value = '';
     document.getElementById('login-error').textContent = '';
@@ -1590,6 +1641,7 @@
   let dadosProfessor = null;                       // cache do /todos_alunos (p/ filtro/busca/CSV sem refetch)
   let filtroProf = { busca: '', soRisco: false };  // estado do filtro do painel do professor
   let notaCorte = 6.0;                             // nota mínima de aprovação (vem do backend)
+  let totalAulasPadrao = 40;                       // total de aulas padrão ao lançar falta (vem do backend)
 
   async function carregarDados() {
     try {
@@ -1617,7 +1669,7 @@
     renderDesempenho();
     renderFrequencia();
     renderEventos();
-    renderDisciplinas();
+    renderNotificacoes();
   }
 
   // ── FUNÇÕES DE RENDER ──
@@ -1701,14 +1753,34 @@
     const d = dadosAluno;
     const materias = Object.keys(d.notas_por_materia);
 
-    const linhas = materias.map(m => {
+    // Chip simples (sem editar/apagar — o aluno só visualiza) e link de expandir
+    const chipAl = (nota) => `<span style="display:inline-flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:12px;">${nota}</span>`;
+    const linkStyle = 'cursor:pointer;font-size:11px;color:var(--accent2);white-space:nowrap;';
+    const linhas = materias.map((m, idx) => {
       const notas = d.notas_por_materia[m];
       const media = d.medias[m] ? d.medias[m].toFixed(1) : '—';
       const fInfo = d.faltas[m];
       const sit = badgeSituacao(d.medias[m] || 0, fInfo ? fInfo.situacao : 'ok');
-      // Todas as notas numa única célula, separadas por vírgula (alinha com o cabeçalho).
-      const todasNotas = notas.length ? notas.join(', ') : '—';
-      return `<tr><td>${m}</td><td>${todasNotas}</td><td><strong style="color:${corMedia(d.medias[m]||0)}">${media}</strong></td><td>${sit}</td></tr>`;
+      const uid = `al-${idx}`;
+      // Por padrão só a ÚLTIMA nota lançada; o link "ver todas" expande/recolhe.
+      let notasCell;
+      if (!notas.length) {
+        notasCell = '<span style="color:var(--text-muted);">—</span>';
+      } else if (notas.length === 1) {
+        notasCell = chipAl(notas[0]);
+      } else {
+        const ultima = notas[notas.length - 1];
+        notasCell = `
+          <span id="nt-resumo-${uid}" style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="color:var(--text-muted);font-size:11px;">última:</span>${chipAl(ultima)}
+            <a onclick="toggleNotas('${uid}')" style="${linkStyle}">ver todas (${notas.length})</a>
+          </span>
+          <span id="nt-todas-${uid}" style="display:none;align-items:center;gap:5px;flex-wrap:wrap;">
+            ${notas.map(chipAl).join('')}
+            <a onclick="toggleNotas('${uid}')" style="${linkStyle}">ocultar</a>
+          </span>`;
+      }
+      return `<tr><td>${m}</td><td>${notasCell}</td><td><strong style="color:${corMedia(d.medias[m]||0)}">${media}</strong></td><td>${sit}</td></tr>`;
     }).join('');
 
     const barras = materias.map(m => {
@@ -1832,34 +1904,6 @@
     document.getElementById('eventos-content').innerHTML = html;
   }
 
-  function renderDisciplinas() {
-    const d = dadosAluno;
-    const materias = Object.keys(d.medias);
-    const iconeSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="2" width="18" height="18"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`;
-
-    const cards = materias.map(m => {
-      const media = d.medias[m].toFixed(1);
-      const fInfo = d.faltas[m];
-      const freq = fInfo ? Math.round(((fInfo.total - fInfo.faltas) / fInfo.total)*100) + '%' : '—';
-      const nec = d.necessario_para_passar[m];
-      const necTxt = nec === 'Média atingida' ? 'Média atingida' : `Precisa de ${nec} para passar`;
-      return `
-        <div class="stat-card" style="padding:20px 22px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(74,85,104,0.2);display:flex;align-items:center;justify-content:center;">${iconeSVG}</div>
-            <div><div style="font-size:14px;color:var(--text);font-weight:500;">${m}</div></div>
-          </div>
-          <div style="font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
-            <span>Média: <strong style="color:${corMedia(d.medias[m])};">${media}</strong></span>
-            <span>Frequência: <strong style="color:var(--text);">${freq}</strong></span>
-            <span style="font-size:11px;">${necTxt}</span>
-          </div>
-        </div>`;
-    }).join('');
-
-    document.getElementById('disciplinas-content').innerHTML =
-      `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">${cards}</div>`;
-  }
 
   // ── PAINEL DO PROFESSOR ──
   async function renderProfessor() {
@@ -1874,6 +1918,7 @@
       }
       dadosProfessor = json;                              // guarda p/ filtro/busca/CSV sem refetch
       if (json.nota_corte) notaCorte = json.nota_corte;   // mantém cores/situação em sintonia
+      if (json.total_aulas_padrao) totalAulasPadrao = json.total_aulas_padrao;
       const alunos = json.alunos;
 
       // Opções reaproveitadas pelos vários formulários
@@ -1886,7 +1931,6 @@
       const campo = 'display:flex;flex-direction:column;gap:4px;';
       const fbS = 'font-size:12.5px;margin-top:8px;min-height:16px;';
 
-      // ── Cartões de ação do professor ──
       const acoes = `
         <datalist id="materias-prof">${opcoesMaterias}</datalist>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px;margin-bottom:16px;">
@@ -1904,10 +1948,7 @@
             <div class="table-title" style="padding:0 0 12px;">Lançar / atualizar falta</div>
             <div style="${campo}"><label style="${lbl}">Aluno</label><select id="falta-aluno" class="config-input">${opcoesAlunos}</select></div>
             <div style="${campo};margin-top:8px;"><label style="${lbl}">Matéria</label><input id="falta-materia" class="config-input" list="materias-prof" placeholder="Ex: Engenharia de Dados"></div>
-            <div style="display:flex;gap:8px;margin-top:8px;">
-              <div style="${campo};flex:1;"><label style="${lbl}">Faltas</label><input id="falta-qtd" class="config-input" type="number" min="0" placeholder="0"></div>
-              <div style="${campo};flex:1;"><label style="${lbl}">Total aulas</label><input id="falta-total" class="config-input" type="number" min="1" placeholder="40"></div>
-            </div>
+            <div style="${campo};margin-top:8px;"><label style="${lbl}">Faltas (de ${totalAulasPadrao} aulas)</label><input id="falta-qtd" class="config-input" type="number" min="0" max="${totalAulasPadrao}" placeholder="0"></div>
             <button class="btn-config-save" style="margin-top:12px;" onclick="lancarFalta()">Salvar falta</button>
             <div id="falta-feedback" style="${fbS}"></div>
           </div>
@@ -1949,7 +1990,6 @@
 
         </div>`;
 
-      // ── Controles: busca, filtro e exportação ──
       const controles = `
         <div class="table-wrap" style="padding:14px 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px;">
           <input id="prof-busca" class="config-input" placeholder="Buscar aluno..." style="flex:1;min-width:160px;" oninput="filtrarProf()" value="${filtroProf.busca}">
@@ -1959,7 +1999,6 @@
           <button class="btn-config-save" onclick="exportarCSV()">Exportar CSV</button>
         </div>`;
 
-      // ── Cards-resumo da turma ──
       const r = json.resumo;
       const resumoCards = `
         <div class="cards-grid">
@@ -2011,7 +2050,7 @@
 
     const detalhes = alunos.map(a => {
       const det = a.notas_detalhadas || {};
-      const linhasMat = Object.keys(a.medias).map(m => {
+      const linhasMat = Object.keys(a.medias).map((m, idx) => {
         const media = a.medias[m];
         const f = a.faltas[m];
         // Frequência + um "×" para remover o registro de faltas (só aparece se houver falta lançada)
@@ -2020,14 +2059,29 @@
           : '—';
         const sit = badgeSituacao(media, f ? f.situacao : 'ok');
         const arr = det[m] || [];
-        // Cada nota vira um "chip" com botões de editar (✎) e apagar (×)
-        const notasHtml = arr.length ? arr.map(o => `
-          <span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 6px;margin:2px;font-size:12px;">
-            ${o.nota}
-            <a onclick="editarNotaPrompt(${o.id}, ${o.nota})" title="Editar nota" style="cursor:pointer;opacity:.7;">✎</a>
-            <a onclick="apagarNotaConfirm(${o.id}, ${o.nota})" title="Apagar nota" style="cursor:pointer;opacity:.7;color:#f87171;">×</a>
-          </span>`).join('') : '—';
-        return `<tr><td>${m}</td><td>${notasHtml}</td><td><strong style="color:${corMedia(media)}">${media.toFixed(1)}</strong></td><td>${freqCell}</td><td>${sit}</td></tr>`;
+        const uid = `${a.id}-${idx}`;
+        // Cada nota é um "chip" com botões de editar (✎) e apagar (×)
+        const chip = (o) => `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:12px;">${o.nota}<a onclick="editarNotaPrompt(${o.id}, ${o.nota})" title="Editar nota" style="cursor:pointer;opacity:.6;">✎</a><a onclick="apagarNotaConfirm(${o.id}, ${o.nota})" title="Apagar nota" style="cursor:pointer;opacity:.6;color:#f87171;">×</a></span>`;
+        const linkStyle = 'cursor:pointer;font-size:11px;color:var(--accent2);white-space:nowrap;';
+        let notasCell;
+        if (!arr.length) {
+          notasCell = '<span style="color:var(--text-muted);">—</span>';
+        } else if (arr.length === 1) {
+          notasCell = chip(arr[0]);
+        } else {
+          // Por padrão mostra só a ÚLTIMA nota lançada; o link expande para todas
+          const ultima = arr[arr.length - 1];
+          notasCell = `
+            <span id="nt-resumo-${uid}" style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="color:var(--text-muted);font-size:11px;">última:</span>${chip(ultima)}
+              <a onclick="toggleNotas('${uid}')" style="${linkStyle}">ver todas (${arr.length})</a>
+            </span>
+            <span id="nt-todas-${uid}" style="display:none;align-items:center;gap:5px;flex-wrap:wrap;">
+              ${arr.map(chip).join('')}
+              <a onclick="toggleNotas('${uid}')" style="${linkStyle}">ocultar</a>
+            </span>`;
+        }
+        return `<tr><td>${m}</td><td>${notasCell}</td><td><strong style="color:${corMedia(media)}">${media.toFixed(1)}</strong></td><td>${freqCell}</td><td>${sit}</td></tr>`;
       }).join('');
       return `
         <div class="table-wrap">
@@ -2076,10 +2130,10 @@
     const aluno_id = Number(document.getElementById('falta-aluno').value);
     const materia = document.getElementById('falta-materia').value.trim();
     const faltas = parseInt(document.getElementById('falta-qtd').value, 10);
-    const total_aulas = parseInt(document.getElementById('falta-total').value, 10);
+    const total_aulas = totalAulasPadrao;   // total padrão (não é mais escolhido na tela)
     let err = '';
-    if (!aluno_id || !materia || isNaN(faltas) || isNaN(total_aulas)) err = 'Preencha aluno, matéria, faltas e total.';
-    else if (total_aulas <= 0 || faltas < 0 || faltas > total_aulas) err = 'Faltas devem estar entre 0 e o total de aulas.';
+    if (!aluno_id || !materia || isNaN(faltas)) err = 'Preencha aluno, matéria e faltas.';
+    else if (faltas < 0 || faltas > total_aulas) err = `Faltas devem estar entre 0 e ${total_aulas}.`;
     await acaoProf('/cadastrar_falta', { aluno_id, materia, faltas, total_aulas }, 'falta-feedback', err);
   }
 
@@ -2154,6 +2208,16 @@
     if (!confirm('Remover o registro de faltas de "' + materia + '"?')) return;
     const res = await chamarFlask('/apagar_falta', { aluno_id, materia });
     if (res.status === 'sucesso') renderProfessor(); else alert(res.mensagem || 'Não foi possível remover.');
+  }
+
+  // Alterna entre mostrar só a última nota e mostrar todas, no detalhamento do aluno.
+  function toggleNotas(uid) {
+    const resumo = document.getElementById('nt-resumo-' + uid);
+    const todas = document.getElementById('nt-todas-' + uid);
+    if (!resumo || !todas) return;
+    const mostrandoTodas = todas.style.display !== 'none';
+    resumo.style.display = mostrandoTodas ? 'inline-flex' : 'none';
+    todas.style.display = mostrandoTodas ? 'none' : 'inline-flex';
   }
 
   function filtrarProf() {
@@ -2344,6 +2408,7 @@
     notas[notaAtualIndex].corpo = document.getElementById('nota-corpo').value;
     notas[notaAtualIndex].data = new Date().toLocaleDateString('pt-BR');
     renderNotasList();
+    salvarAnotacoes();   // persiste no banco
   }
 
   function deletarNota() {
@@ -2353,17 +2418,72 @@
     document.getElementById('nota-empty').style.display = 'flex';
     document.getElementById('nota-form').style.display = 'none';
     renderNotasList();
+    salvarAnotacoes();   // persiste a remoção no banco
+  }
+
+  // Persiste a lista inteira de anotações do usuário no banco (substitui).
+  async function salvarAnotacoes() {
+    try {
+      await fetch('/anotacoes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anotacoes: notas })
+      });
+    } catch (e) { /* offline: tenta de novo na próxima alteração */ }
+  }
+
+  // Carrega do banco as anotações do usuário logado e mostra na lista.
+  async function carregarAnotacoes() {
+    try {
+      const res = await fetch('/anotacoes');
+      const data = await res.json();
+      notas = (data && data.anotacoes) ? data.anotacoes : [];
+    } catch (e) { notas = []; }
+    notaAtualIndex = null;
+    const vazio = document.getElementById('nota-empty');
+    const form = document.getElementById('nota-form');
+    if (vazio) vazio.style.display = 'flex';
+    if (form) form.style.display = 'none';
+    renderNotasList();
   }
 
   // ── CONFIGURAÇÕES ──
   function salvarConfiguracoes() {
     const nome = document.getElementById('cfg-nome').value.trim();
     if (nome) document.getElementById('display-name').textContent = nome;
-    const btn = document.querySelector('.btn-config-save');
+    const btn = document.getElementById('btn-salvar-config');
     const orig = btn.textContent;
     btn.textContent = 'Salvo!';
     btn.style.opacity = '0.7';
     setTimeout(() => { btn.textContent = orig; btn.style.opacity = ''; }, 1800);
+  }
+
+  // Troca a senha do próprio usuário logado (valida no front e confirma no back).
+  let senhaFbTimer = null;
+  async function mudarSenha() {
+    const atual = document.getElementById('cfg-senha-atual').value;
+    const nova = document.getElementById('cfg-senha-nova').value;
+    const conf = document.getElementById('cfg-senha-conf').value;
+    const fb = document.getElementById('senha-feedback');
+    // A mensagem (sucesso ou erro) some sozinha após 15 segundos.
+    const setFb = (ok, msg) => {
+      fb.style.color = ok ? '#4ade80' : '#f87171';
+      fb.textContent = msg;
+      clearTimeout(senhaFbTimer);
+      senhaFbTimer = setTimeout(() => { fb.textContent = ''; }, 15000);
+    };
+    if (!atual || !nova || !conf) return setFb(false, 'Preencha todos os campos.');
+    if (nova !== conf) return setFb(false, 'A nova senha e a confirmação não batem.');
+    if (nova.length < 3) return setFb(false, 'A nova senha é muito curta.');
+    try {
+      const res = await chamarFlask('/mudar_senha', { senha_atual: atual, senha_nova: nova });
+      setFb(res.status === 'sucesso', res.mensagem || (res.status === 'sucesso' ? 'Senha alterada!' : 'Não foi possível.'));
+      if (res.status === 'sucesso') {
+        document.getElementById('cfg-senha-atual').value = '';
+        document.getElementById('cfg-senha-nova').value = '';
+        document.getElementById('cfg-senha-conf').value = '';
+      }
+    } catch (e) { setFb(false, 'Erro ao conectar com o servidor.'); }
   }
 
   // ── CHAT / ASSISTENTE ──
@@ -2495,10 +2615,9 @@
     addMessage('user', texto);
     if (conversaAtual) conversaAtual.mensagens.push({ role: 'user', content: texto });
     setLoading(true);
-    const typing = addMessage('ai', 'Processando...', 'typing');
+    const typing = addMessage('ai', '', 'typing');
+    typing.innerHTML = '<span class="thinking-dots"><span></span><span></span><span></span></span>';  // animação de "pensando"
     try {
-      // Toda pergunta vai direto para a IA. O back-end (/perguntar) sempre
-      // responde no formato {tipo:"resposta", texto:"..."}.
       const dados = await chamarFlask('/perguntar', { pergunta: texto });
       const resposta = dados.texto;
       typing.textContent = resposta;
@@ -2530,7 +2649,7 @@
         renderHistorico();
         salvarConversas();
       }
-    } catch (e) { /* offline / IA fora: mantém a primeira mensagem como título */ }
+    } catch (e) {}
   }
 
   // ── PERSISTÊNCIA DAS CONVERSAS (por usuário, no banco) ──
@@ -2548,7 +2667,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversas: lista.slice(0, 50) })  // guarda no máx. as 50 mais recentes
       });
-    } catch (e) { /* offline: ignora, tenta de novo na próxima mensagem */ }
+    } catch (e) {}
   }
 
   // Carrega do banco a lista de conversas do usuário logado e mostra na barra lateral.
@@ -2559,12 +2678,104 @@
       historico = (data && data.conversas) ? data.conversas : [];
       conversaAtual = null;
       renderHistorico();
-    } catch (e) { /* offline: mantém vazio */ }
+    } catch (e) {}
   }
+
+  // ── NOTIFICAÇÕES ──
+  // Alertas reais, montados a partir dos dados do aluno. Os toggles das Configurações
+  // ligam/desligam cada tipo e ficam salvos no navegador (localStorage).
+  function getNotifPrefs() {
+    return {
+      prova:  document.getElementById('cfg-notif-prova').checked,
+      freq:   document.getElementById('cfg-notif-freq').checked,
+      resumo: document.getElementById('cfg-notif-resumo').checked,
+    };
+  }
+
+  function carregarNotifPrefs() {
+    try {
+      const p = JSON.parse(localStorage.getItem('notif_prefs') || 'null');
+      if (p) {
+        document.getElementById('cfg-notif-prova').checked  = !!p.prova;
+        document.getElementById('cfg-notif-freq').checked   = !!p.freq;
+        document.getElementById('cfg-notif-resumo').checked = !!p.resumo;
+      }
+    } catch (e) {}
+  }
+
+  function salvarNotifPrefs() {
+    try { localStorage.setItem('notif_prefs', JSON.stringify(getNotifPrefs())); } catch (e) {}
+    renderNotificacoes();
+  }
+
+  function computarNotificacoes() {
+    const lista = [];
+    if (!dadosAluno) return lista;
+    const prefs = getNotifPrefs();
+
+    // Lembretes de prova: provas dentro dos próximos 2 dias
+    if (prefs.prova && dadosAluno.provas) {
+      const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+      dadosAluno.provas.forEach(p => {
+        const dt = new Date(p.data + 'T00:00:00');
+        const dias = Math.round((dt - hoje) / 86400000);
+        if (dias >= 0 && dias <= 2) {
+          const quando = dias === 0 ? 'hoje' : (dias === 1 ? 'amanhã' : `em ${dias} dias`);
+          lista.push({ ic: '📘', txt: `Prova de ${p.materia} ${quando}` });
+        }
+      });
+    }
+
+    // Alerta de frequência: matérias abaixo de 80%
+    if (prefs.freq && dadosAluno.faltas) {
+      Object.keys(dadosAluno.faltas).forEach(m => {
+        const f = dadosAluno.faltas[m];
+        const freq = f.total ? Math.round(((f.total - f.faltas) / f.total) * 100) : 100;
+        if (freq < 80) lista.push({ ic: '⚠️', txt: `Frequência baixa em ${m}: ${freq}%` });
+      });
+    }
+
+    // Resumo (semanal): visão geral rápida do desempenho
+    if (prefs.resumo && dadosAluno.medias) {
+      const ms = Object.values(dadosAluno.medias);
+      const mg = ms.length ? (ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(1) : '—';
+      const atencao = Object.keys(dadosAluno.medias).filter(m => dadosAluno.medias[m] < notaCorte).length;
+      lista.push({ ic: '📊', txt: `Resumo: média geral ${mg} · ${atencao} disciplina(s) em atenção` });
+    }
+
+    return lista;
+  }
+
+  function renderNotificacoes() {
+    const wrap = document.getElementById('notif-wrap');
+    if (!wrap) return;
+    if (!dadosAluno) { wrap.style.display = 'none'; return; }   // só o aluno tem notificações
+    wrap.style.display = 'block';
+    const lista = computarNotificacoes();
+    const badge = document.getElementById('notif-badge');
+    badge.textContent = lista.length;
+    badge.style.display = lista.length ? 'flex' : 'none';
+    document.getElementById('notif-list').innerHTML = lista.length
+      ? lista.map(n => `<div class="notif-item"><span style="font-size:15px;">${n.ic}</span><span>${n.txt}</span></div>`).join('')
+      : '<div class="notif-empty">Tudo em dia — nenhuma notificação 🎉</div>';
+  }
+
+  function toggleNotifPanel() {
+    const p = document.getElementById('notif-panel');
+    p.style.display = (p.style.display === 'block') ? 'none' : 'block';
+  }
+
+  // Fecha o painel ao clicar fora dele
+  document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('notif-wrap');
+    const panel = document.getElementById('notif-panel');
+    if (wrap && panel && !wrap.contains(e.target)) panel.style.display = 'none';
+  });
 
   // ── INIT ──
   renderCalendar();
   renderNotasList();
+  carregarNotifPrefs();   // restaura as preferências de notificação salvas no navegador
   checarSessao(); // verifica se já há login ativo; senão, mostra a tela de login
 </script>
 </body>
