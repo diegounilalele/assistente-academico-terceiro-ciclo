@@ -40,20 +40,20 @@ def conectar_db():
 
 def login_obrigatorio(rota):
     @wraps(rota)
-    def protegida(*args, **kwargs):
+    def protecao(*args, **kwargs):
         if not session.get("usuario_tipo"):
             return jsonify({"status": "erro", "mensagem": "Faça login para continuar."}), 401
         return rota(*args, **kwargs)
-    return protegida
+    return protecao
 
 
 def apenas_professor(rota):
     @wraps(rota)
-    def protegida(*args, **kwargs):
+    def protecao(*args, **kwargs):
         if session.get("usuario_tipo") != "professor":
             return jsonify({"status": "erro", "mensagem": "Acesso negado. Apenas professores."}), 403
         return rota(*args, **kwargs)
-    return protegida
+    return protecao
 
 
 def buscar_dados_aluno(id_aluno):
@@ -104,8 +104,8 @@ def buscar_dados_aluno(id_aluno):
         }
 
     # Quanto o aluno ainda precisa tirar para fechar a média mínima (nota de corte configurável)
-    corte = nota_corte()
-    necessario_para_passar = {}
+    corte = nota_corte() # puxa do banco a nota de corte (configuração do professor; padrão 6.0)
+    necessario_para_passar = {} # matéria: nota necessária para a próxima avaliação (ou "Média atingida" se já passou)
     for materia, media_atual in medias_calculadas.items():
         if media_atual < corte:
             qtd_notas = len(notas_por_materia[materia])
@@ -168,6 +168,11 @@ def inicializar_banco():
         colunas = [c["name"] for c in conexao.execute("PRAGMA table_info(conversas_salvas)").fetchall()]
         if "aluno_id" not in colunas:
             conexao.execute("ALTER TABLE conversas_salvas ADD COLUMN aluno_id INTEGER")
+
+        # Migração: coluna 'nome_exibicao' em usuarios (nome que o usuário escolhe mostrar).
+        colunas_usuarios = [c["name"] for c in conexao.execute("PRAGMA table_info(usuarios)").fetchall()]
+        if "nome_exibicao" not in colunas_usuarios:
+            conexao.execute("ALTER TABLE usuarios ADD COLUMN nome_exibicao TEXT")
 
         # Recado/observação que o professor deixa para um aluno (um por aluno).
         conexao.execute("""
@@ -391,7 +396,7 @@ def login():
     with conectar_db() as conexao:
         cursor = conexao.cursor()
         cursor.execute(
-            "SELECT id, senha, tipo, aluno_id FROM usuarios WHERE username = ?",
+            "SELECT id, senha, tipo, aluno_id, nome_exibicao FROM usuarios WHERE username = ?",
             (username,)
         )
         usuario = cursor.fetchone()
@@ -402,10 +407,12 @@ def login():
         session["usuario_tipo"] = usuario["tipo"]
         session["username"] = username
         session["aluno_id"] = usuario["aluno_id"]
+        session["nome_exibicao"] = usuario["nome_exibicao"] or ""
         return jsonify({
             "status": "sucesso",
             "tipo": usuario["tipo"],
             "username": username,
+            "nome_exibicao": usuario["nome_exibicao"] or "",
             "mensagem": "Login realizado!"
         })
 
@@ -425,9 +432,22 @@ def sessao():
         return jsonify({
             "logado": True,
             "tipo": session.get("usuario_tipo"),
-            "username": session.get("username")
+            "username": session.get("username"),
+            "nome_exibicao": session.get("nome_exibicao", "")
         })
     return jsonify({"logado": False})
+
+
+@servidor.route("/salvar_nome", methods=["POST"])
+@login_obrigatorio
+def salvar_nome():
+    """Salva o nome de exibição do usuário logado (mostrado no canto da barra lateral)."""
+    dados = request.get_json() or {}
+    nome = (dados.get("nome") or "").strip()
+    with conectar_db() as conexao:
+        conexao.execute("UPDATE usuarios SET nome_exibicao = ? WHERE id = ?", (nome, session.get("usuario_id")))
+    session["nome_exibicao"] = nome
+    return jsonify({"status": "sucesso", "nome_exibicao": nome, "mensagem": "Nome salvo!"})
 
 
 @servidor.route("/dados_aluno", methods=["GET"])
@@ -573,6 +593,8 @@ def cadastrar_nota():
 
     if not id_aluno or not materia or nota is None:
         return jsonify({"status": "erro", "mensagem": "Dados incompletos."}), 400
+    if nota < 0 or nota > 10:
+        return jsonify({"status": "erro", "mensagem": "A nota deve estar entre 0 e 10."}), 400
 
     with conectar_db() as conexao:
         conexao.execute(
@@ -604,7 +626,7 @@ def todos_alunos():
 
         total_faltas = sum(f["faltas"] for f in dados["faltas"].values())
         total_aulas  = sum(f["total"]  for f in dados["faltas"].values())
-        freq_geral = round((total_aulas - total_faltas) / total_aulas * 100) if total_aulas else 0
+        freq_geral = round((total_aulas - total_faltas) / total_aulas * 100) if total_aulas else 100  # sem falta lançada = 100%
 
         # Uma disciplina entra "em risco" se a média ficou abaixo da nota de corte ou se reprovou por falta
         em_risco = {m for m, media in dados["medias"].items() if media < corte}
@@ -798,27 +820,6 @@ def mudar_senha():
             return jsonify({"status": "erro", "mensagem": "Senha atual incorreta."}), 403
         conexao.execute("UPDATE usuarios SET senha = ? WHERE id = ?", (generate_password_hash(nova), uid))
     return jsonify({"status": "sucesso", "mensagem": "Senha alterada com sucesso!"})
-
-
-@servidor.route("/observacao", methods=["POST"])
-@apenas_professor
-def salvar_observacao():
-    dados = request.get_json() or {}
-    id_aluno = dados.get("aluno_id")
-    texto = (dados.get("texto") or "").strip()
-
-    if not id_aluno:
-        return jsonify({"status": "erro", "mensagem": "Informe o aluno."}), 400
-
-    with conectar_db() as conexao:
-        if texto:
-            conexao.execute(
-                "INSERT OR REPLACE INTO observacoes (aluno_id, texto) VALUES (?, ?)",
-                (id_aluno, texto)
-            )
-        else:
-            conexao.execute("DELETE FROM observacoes WHERE aluno_id = ?", (id_aluno,))
-    return jsonify({"status": "sucesso", "mensagem": "Observação salva!"})
 
 
 @servidor.route("/config", methods=["POST"])

@@ -40,6 +40,7 @@ cursor.executescript("""
         senha TEXT,
         tipo TEXT,
         aluno_id INTEGER,
+        nome_exibicao TEXT,
         FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE
     );
 
@@ -192,6 +193,8 @@ else:
     ])
 
     # ── 10 alunos extras (mesmo padrão: 5 matérias, 3 notas cada, faltas e as provas do aluno 1) ──
+    # 7 com perfil regular (notas 6.5–9.5, poucas faltas) e 3 com um fator de risco.
+    # Junto com os originais (Diego regular; André e Tiago em risco) dá 8 regulares / 5 em risco (~60%).
     random.seed(2026)  # seed fixa: gera sempre os mesmos dados
     materias_5 = [
         "Engenharia de Dados",
@@ -202,6 +205,7 @@ else:
     ]
     nomes_extras = ["Ana Souza", "Bruno Lima", "Carla Mendes", "Daniel Rocha", "Eduarda Alves",
                     "Felipe Castro", "Gabriela Dias", "Henrique Nunes", "Isabela Pinto", "João Vitor"]
+    indices_em_risco = {3, 6, 9}  # quais dos 10 extras ficam em risco (Daniel, Gabriela, João)
     for i, nome in enumerate(nomes_extras):
         matricula = str(2612401 + i)
         cursor.execute("INSERT INTO alunos (nome) VALUES (?)", (nome,))
@@ -211,9 +215,13 @@ else:
         for mat in materias_5:
             for _ in range(3):
                 cursor.execute("INSERT INTO notas (aluno_id, materia, nota) VALUES (?, ?, ?)",
-                               (aid, mat, round(random.uniform(4.0, 9.5), 1)))
+                               (aid, mat, round(random.uniform(6.5, 9.5), 1)))  # notas boas (>= corte)
             cursor.execute("INSERT OR IGNORE INTO faltas (aluno_id, materia, faltas, total_aulas) VALUES (?, ?, ?, 40)",
-                           (aid, mat, random.randint(0, 12)))
+                           (aid, mat, random.randint(0, 8)))  # poucas faltas (<= 25%)
+        if i in indices_em_risco:
+            # injeta um fator de risco: uma matéria com faltas acima de 25% (reprovado por falta)
+            mat_risco = materias_5[random.randint(0, 4)]
+            cursor.execute("UPDATE faltas SET faltas = 13 WHERE aluno_id = ? AND materia = ?", (aid, mat_risco))
         # mesmas provas do André (aluno 1)
         cursor.execute("INSERT OR IGNORE INTO provas (aluno_id, materia, data, conteudo) "
                        "SELECT ?, materia, data, conteudo FROM provas WHERE aluno_id = 1", (aid,))

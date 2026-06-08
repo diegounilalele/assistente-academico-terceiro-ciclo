@@ -27,9 +27,10 @@
       font-family: 'DM Sans', sans-serif;
       background: var(--bg);
       color: var(--text);
-      height: 100vh;
+      height: calc(100vh / 1.05);   /* compensa o zoom abaixo p/ não estourar a viewport */
       display: flex;
       overflow: hidden;
+      zoom: 1.05;                   /* +5% em toda a interface (fontes incluídas) */
     }
 
     body::before {
@@ -49,7 +50,7 @@
       position: relative;
       z-index: 2;
       width: var(--sidebar-w);
-      min-height: 100vh;
+      min-height: calc(100vh / 1.05);   /* compensa o zoom do body p/ não estourar a viewport */
       background: var(--surface);
       border-right: 1px solid var(--border);
       display: flex;
@@ -830,6 +831,7 @@
       overflow-y: auto;
       scrollbar-width: thin;
       scrollbar-color: var(--border) transparent;
+      zoom: 0.952381;   /* 1/1.05: mantém a conversa com o agente no tamanho original */
     }
 
     .messages::-webkit-scrollbar { width: 4px; }
@@ -1109,29 +1111,6 @@
       border-radius: 2px;
     }
 
-    /* ── Notificações ── */
-    #notif-wrap { position: fixed; top: 16px; right: 22px; z-index: 60; }
-    #notif-bell {
-      position: relative; width: 40px; height: 40px; border-radius: 10px;
-      background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
-      display: flex; align-items: center; justify-content: center; cursor: pointer;
-      transition: background .15s, color .15s;
-    }
-    #notif-bell:hover { background: var(--surface2); color: var(--text); }
-    #notif-badge {
-      position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px;
-      border-radius: 9px; background: #f87171; color: #fff; font-size: 11px; font-weight: 600;
-      display: none; align-items: center; justify-content: center; line-height: 1;
-    }
-    #notif-panel {
-      display: none; position: absolute; top: 48px; right: 0; width: 320px; max-height: 60vh; overflow-y: auto;
-      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      box-shadow: 0 12px 32px rgba(0,0,0,.38); padding: 8px;
-    }
-    #notif-panel .notif-title { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); padding: 8px 10px 6px; }
-    .notif-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 8px; font-size: 13px; color: var(--text); line-height: 1.4; }
-    .notif-item:hover { background: var(--surface2); }
-    .notif-empty { padding: 18px 10px; font-size: 13px; color: var(--text-muted); text-align: center; }
   </style>
 </head>
 <body class="deslogado">
@@ -1225,7 +1204,7 @@
     <p class="sidebar-section-title">Professor</p>
     <div class="sidebar-item" id="nav-professor" onclick="showView('professor')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Todos os Alunos
+      Aba do Professor
     </div>
   </div>
 
@@ -1260,18 +1239,6 @@
 
 <!-- MAIN -->
 <main class="main">
-
-  <!-- Notificações (sino fixo no topo direito; só aparece para o aluno) -->
-  <div id="notif-wrap" style="display:none;">
-    <button id="notif-bell" onclick="toggleNotifPanel()" title="Notificações" aria-label="Notificações">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      <span id="notif-badge"></span>
-    </button>
-    <div id="notif-panel">
-      <div class="notif-title">Notificações</div>
-      <div id="notif-list"></div>
-    </div>
-  </div>
 
   <!-- ── ASSISTENTE (HOME + CHAT) ── -->
   <div class="home-view visible" id="home-view">
@@ -1431,29 +1398,6 @@
       <div class="config-row">
         <div><div class="config-row-label">Nome</div><div class="config-row-sub">Exibido na interface</div></div>
         <input class="config-input" type="text" id="cfg-nome" placeholder="Seu nome">
-      </div>
-      <div class="config-row">
-        <div><div class="config-row-label">E-mail</div><div class="config-row-sub">Contato institucional</div></div>
-        <input class="config-input" type="email" id="cfg-email" placeholder="seu@email.com">
-      </div>
-      <div class="config-row">
-        <div><div class="config-row-label">Curso</div></div>
-        <input class="config-input" type="text" id="cfg-curso" placeholder="Ex: Ciência da Computação">
-      </div>
-    </div>
-    <div class="config-section">
-      <div class="config-section-title">Notificações</div>
-      <div class="config-row">
-        <div><div class="config-row-label">Lembretes de prova</div><div class="config-row-sub">Alertar 2 dias antes</div></div>
-        <label class="toggle"><input type="checkbox" id="cfg-notif-prova" checked onchange="salvarNotifPrefs()"><span class="toggle-track"></span></label>
-      </div>
-      <div class="config-row">
-        <div><div class="config-row-label">Alerta de frequência</div><div class="config-row-sub">Avisar quando abaixo de 80%</div></div>
-        <label class="toggle"><input type="checkbox" id="cfg-notif-freq" checked onchange="salvarNotifPrefs()"><span class="toggle-track"></span></label>
-      </div>
-      <div class="config-row">
-        <div><div class="config-row-label">Resumo semanal</div><div class="config-row-sub">Relatório todo domingo</div></div>
-        <label class="toggle"><input type="checkbox" id="cfg-notif-resumo" onchange="salvarNotifPrefs()"><span class="toggle-track"></span></label>
       </div>
     </div>
     <div class="config-section">
@@ -1630,7 +1574,6 @@
     document.getElementById('messages').innerHTML = '';
     renderHistorico();
     renderNotasList();
-    const nw = document.getElementById('notif-wrap'); if (nw) nw.style.display = 'none';
     document.body.classList.add('deslogado');
     document.getElementById('login-pass').value = '';
     document.getElementById('login-error').textContent = '';
@@ -1669,7 +1612,6 @@
     renderDesempenho();
     renderFrequencia();
     renderEventos();
-    renderNotificacoes();
   }
 
   // ── FUNÇÕES DE RENDER ──
@@ -1704,7 +1646,7 @@
     // Frequência geral
     let totalFaltas = 0, totalAulas = 0;
     Object.values(d.faltas).forEach(f => { totalFaltas += f.faltas; totalAulas += f.total; });
-    const freqGeral = totalAulas ? Math.round(((totalAulas - totalFaltas) / totalAulas) * 100) : '-';
+    const freqGeral = totalAulas ? Math.round(((totalAulas - totalFaltas) / totalAulas) * 100) : 100;  // sem falta lançada = 100%
 
     // Próxima prova
     const proxProva = d.provas.sort((a,b) => a.data.localeCompare(b.data))[0];
@@ -1721,7 +1663,7 @@
     const linhasSituacao = materias.map(m => {
       const media = d.medias[m].toFixed(1);
       const fInfo = d.faltas[m];
-      const freq = fInfo ? Math.round(((fInfo.total - fInfo.faltas) / fInfo.total)*100) + '%' : '—';
+      const freq = fInfo ? Math.round(((fInfo.total - fInfo.faltas) / fInfo.total)*100) + '%' : '100%';
       const sit = badgeSituacao(d.medias[m], fInfo ? fInfo.situacao : 'ok');
       return `<tr><td>${m}</td><td>${media}</td><td>${freq}</td><td>${sit}</td></tr>`;
     }).join('');
@@ -1820,7 +1762,7 @@
       totalAulas  += faltas[m].total;
       if (faltas[m].situacao === 'Reprovado por falta') emRisco.push(m);
     });
-    const freqGeral = totalAulas ? Math.round(((totalAulas - totalFaltas) / totalAulas)*100) : 0;
+    const freqGeral = totalAulas ? Math.round(((totalAulas - totalFaltas) / totalAulas)*100) : 100;  // sem falta lançada = 100%
 
     const linhas = materias.map(m => {
       const f = faltas[m];
@@ -1958,7 +1900,7 @@
             <div style="${campo}"><label style="${lbl}">Para</label><select id="prova-alvo" class="config-input"><option value="turma">Turma toda</option>${opcoesAlunos}</select></div>
             <div style="${campo};margin-top:8px;"><label style="${lbl}">Matéria</label><input id="prova-materia" class="config-input" list="materias-prof" placeholder="Ex: Todas as matérias"></div>
             <div style="${campo};margin-top:8px;"><label style="${lbl}">Data</label><input id="prova-data" class="config-input" type="date"></div>
-            <div style="${campo};margin-top:8px;"><label style="${lbl}">Conteúdo</label><input id="prova-conteudo" class="config-input" placeholder="O que cai na prova"></div>
+            <div style="${campo};margin-top:8px;"><label style="${lbl}">Conteúdo</label><input id="prova-conteudo" class="config-input" placeholder="Agendamento..."></div>
             <button class="btn-config-save" style="margin-top:12px;" onclick="ConcluirAgendamento()">Concluir Agendamento</button>
             <div id="prova-feedback" style="${fbS}"></div>
           </div>
@@ -1996,7 +1938,6 @@
           <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);cursor:pointer;">
             <input type="checkbox" id="prof-risco" onchange="filtrarProf()" ${filtroProf.soRisco ? 'checked' : ''}> só em risco
           </label>
-          <button class="btn-config-save" onclick="exportarCSV()">Exportar CSV</button>
         </div>`;
 
       const r = json.resumo;
@@ -2056,7 +1997,7 @@
         // Frequência + um "×" para remover o registro de faltas (só aparece se houver falta lançada)
         const freqCell = f
           ? `${Math.round(((f.total - f.faltas) / f.total) * 100)}% <a data-aluno="${a.id}" data-materia="${htmlEsc(m)}" onclick="apagarFaltaBtn(this)" title="Remover faltas desta matéria" style="cursor:pointer;opacity:.7;color:#f87171;margin-left:4px;">×</a>`
-          : '—';
+          : '100%';
         const sit = badgeSituacao(media, f ? f.situacao : 'ok');
         const arr = det[m] || [];
         const uid = `${a.id}-${idx}`;
@@ -2090,14 +2031,6 @@
             <thead><tr><th>Disciplina</th><th>Notas lançadas</th><th>Média</th><th>Frequência</th><th>Situação</th></tr></thead>
             <tbody>${linhasMat}</tbody>
           </table>
-          <div style="padding:12px 16px;border-top:1px solid var(--border);">
-            <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Recado para ${a.nome}</label>
-            <textarea id="obs-${a.id}" class="config-input" rows="2" style="width:100%;margin-top:6px;resize:vertical;" placeholder="Recado que o aluno vê e que a IA usa no contexto...">${a.observacao || ''}</textarea>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
-              <button class="btn-config-save" onclick="salvarObservacao(${a.id})">Salvar recado</button>
-              <span id="obs-fb-${a.id}" style="font-size:12.5px;"></span>
-            </div>
-          </div>
         </div>`;
     }).join('');
 
@@ -2167,19 +2100,6 @@
     await acaoProf('/config', { nota_corte: corte }, 'corte-feedback', err);
   }
 
-  // Observação não recarrega o painel (pra não perder a posição); atualiza só o cache.
-  async function salvarObservacao(alunoId) {
-    const texto = document.getElementById('obs-' + alunoId).value;
-    try {
-      const res = await chamarFlask('/observacao', { aluno_id: alunoId, texto });
-      fbProf('obs-fb-' + alunoId, res.status === 'sucesso', res.mensagem || (res.status === 'sucesso' ? 'Salvo!' : 'Erro.'));
-      if (res.status === 'sucesso' && dadosProfessor) {
-        const a = dadosProfessor.alunos.find(x => x.id === alunoId);
-        if (a) a.observacao = texto.trim();
-      }
-    } catch (e) { fbProf('obs-fb-' + alunoId, false, 'Erro ao conectar.'); }
-  }
-
   async function editarNotaPrompt(notaId, atual) {
     const nova = prompt('Novo valor da nota (0 a 10):', atual);
     if (nova === null) return;
@@ -2224,23 +2144,6 @@
     filtroProf.busca = document.getElementById('prof-busca').value;
     filtroProf.soRisco = document.getElementById('prof-risco').checked;
     renderListaProf();
-  }
-
-  // Gera um CSV da turma (com BOM, pra o Excel ler os acentos certos) e baixa.
-  function exportarCSV() {
-    if (!dadosProfessor) return;
-    const linhas = [['Aluno', 'Media Geral', 'Frequencia', 'Disciplinas', 'Em Risco', 'Situacao']];
-    dadosProfessor.alunos.forEach(a => {
-      linhas.push([a.nome, a.media_geral, a.frequencia_geral + '%', a.total_disciplinas,
-        a.em_risco.join('; ') || '-', a.em_risco.length ? 'Em risco' : 'Regular']);
-    });
-    const csv = linhas.map(l => l.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url; link.download = 'turma.csv';
-    document.body.appendChild(link); link.click(); document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   }
 
   // Professor lança uma nota num aluno e o painel recarrega já com a nota nova.
@@ -2681,101 +2584,9 @@
     } catch (e) {}
   }
 
-  // ── NOTIFICAÇÕES ──
-  // Alertas reais, montados a partir dos dados do aluno. Os toggles das Configurações
-  // ligam/desligam cada tipo e ficam salvos no navegador (localStorage).
-  function getNotifPrefs() {
-    return {
-      prova:  document.getElementById('cfg-notif-prova').checked,
-      freq:   document.getElementById('cfg-notif-freq').checked,
-      resumo: document.getElementById('cfg-notif-resumo').checked,
-    };
-  }
-
-  function carregarNotifPrefs() {
-    try {
-      const p = JSON.parse(localStorage.getItem('notif_prefs') || 'null');
-      if (p) {
-        document.getElementById('cfg-notif-prova').checked  = !!p.prova;
-        document.getElementById('cfg-notif-freq').checked   = !!p.freq;
-        document.getElementById('cfg-notif-resumo').checked = !!p.resumo;
-      }
-    } catch (e) {}
-  }
-
-  function salvarNotifPrefs() {
-    try { localStorage.setItem('notif_prefs', JSON.stringify(getNotifPrefs())); } catch (e) {}
-    renderNotificacoes();
-  }
-
-  function computarNotificacoes() {
-    const lista = [];
-    if (!dadosAluno) return lista;
-    const prefs = getNotifPrefs();
-
-    // Lembretes de prova: provas dentro dos próximos 2 dias
-    if (prefs.prova && dadosAluno.provas) {
-      const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-      dadosAluno.provas.forEach(p => {
-        const dt = new Date(p.data + 'T00:00:00');
-        const dias = Math.round((dt - hoje) / 86400000);
-        if (dias >= 0 && dias <= 2) {
-          const quando = dias === 0 ? 'hoje' : (dias === 1 ? 'amanhã' : `em ${dias} dias`);
-          lista.push({ ic: '📘', txt: `Prova de ${p.materia} ${quando}` });
-        }
-      });
-    }
-
-    // Alerta de frequência: matérias abaixo de 80%
-    if (prefs.freq && dadosAluno.faltas) {
-      Object.keys(dadosAluno.faltas).forEach(m => {
-        const f = dadosAluno.faltas[m];
-        const freq = f.total ? Math.round(((f.total - f.faltas) / f.total) * 100) : 100;
-        if (freq < 80) lista.push({ ic: '⚠️', txt: `Frequência baixa em ${m}: ${freq}%` });
-      });
-    }
-
-    // Resumo (semanal): visão geral rápida do desempenho
-    if (prefs.resumo && dadosAluno.medias) {
-      const ms = Object.values(dadosAluno.medias);
-      const mg = ms.length ? (ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(1) : '—';
-      const atencao = Object.keys(dadosAluno.medias).filter(m => dadosAluno.medias[m] < notaCorte).length;
-      lista.push({ ic: '📊', txt: `Resumo: média geral ${mg} · ${atencao} disciplina(s) em atenção` });
-    }
-
-    return lista;
-  }
-
-  function renderNotificacoes() {
-    const wrap = document.getElementById('notif-wrap');
-    if (!wrap) return;
-    if (!dadosAluno) { wrap.style.display = 'none'; return; }   // só o aluno tem notificações
-    wrap.style.display = 'block';
-    const lista = computarNotificacoes();
-    const badge = document.getElementById('notif-badge');
-    badge.textContent = lista.length;
-    badge.style.display = lista.length ? 'flex' : 'none';
-    document.getElementById('notif-list').innerHTML = lista.length
-      ? lista.map(n => `<div class="notif-item"><span style="font-size:15px;">${n.ic}</span><span>${n.txt}</span></div>`).join('')
-      : '<div class="notif-empty">Tudo em dia — nenhuma notificação 🎉</div>';
-  }
-
-  function toggleNotifPanel() {
-    const p = document.getElementById('notif-panel');
-    p.style.display = (p.style.display === 'block') ? 'none' : 'block';
-  }
-
-  // Fecha o painel ao clicar fora dele
-  document.addEventListener('click', (e) => {
-    const wrap = document.getElementById('notif-wrap');
-    const panel = document.getElementById('notif-panel');
-    if (wrap && panel && !wrap.contains(e.target)) panel.style.display = 'none';
-  });
-
   // ── INIT ──
   renderCalendar();
   renderNotasList();
-  carregarNotifPrefs();   // restaura as preferências de notificação salvas no navegador
   checarSessao(); // verifica se já há login ativo; senão, mostra a tela de login
 </script>
 </body>
