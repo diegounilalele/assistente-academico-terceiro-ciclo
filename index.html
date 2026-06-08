@@ -9,15 +9,15 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0a0d14;          /* céu noturno sobre os fiordes */
-      --surface: #11161f;     /* pedra escura */
-      --surface2: #1a212e;    /* pedra mais clara */
-      --border: #2a3344;      /* aço azulado */
-      --accent: #b8893a;      /* ouro de Asgard */
-      --accent2: #e0bd6e;     /* ouro claro / brilho rúnico */
-      --text: #d8dde6;        /* branco gelado */
-      --text-muted: #6b7686;  /* aço fosco */
-      --rune: #6aa7cf;        /* azul da Bifröst */
+      --bg: #0a0d14;
+      --surface: #11161f;
+      --surface2: #1a212e;
+      --border: #2a3344;
+      --accent: #b8893a;
+      --accent2: #e0bd6e; 
+      --text: #d8dde6; 
+      --text-muted: #6b7686;
+      --rune: #6aa7cf;
       --user-bubble: #141a24;
       --ai-bubble: #0e131b;
       --sidebar-w: 220px;
@@ -153,7 +153,7 @@
       padding: 0 12px;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 8px;
       overflow-y: auto;
       max-height: 180px;
       scrollbar-width: thin;
@@ -167,11 +167,11 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 7px 10px;
+      padding: 10px 12px;
       border-radius: 8px;
       cursor: pointer;
       color: var(--text-muted);
-      font-size: 12.5px;
+      font-size: 14px;
       transition: background 0.15s, color 0.15s;
       overflow: hidden;
     }
@@ -179,7 +179,7 @@
     .history-item:hover { background: var(--surface2); color: var(--text); }
 
     .history-item svg {
-      width: 13px; height: 13px;
+      width: 15px; height: 15px;
       flex-shrink: 0;
       opacity: 0.5;
     }
@@ -1587,6 +1587,9 @@
 
   // ── DADOS DO BANCO ──
   let dadosAluno = null;
+  let dadosProfessor = null;                       // cache do /todos_alunos (p/ filtro/busca/CSV sem refetch)
+  let filtroProf = { busca: '', soRisco: false };  // estado do filtro do painel do professor
+  let notaCorte = 6.0;                             // nota mínima de aprovação (vem do backend)
 
   async function carregarDados() {
     try {
@@ -1602,9 +1605,13 @@
 
   function aplicarDados() {
     if (!dadosAluno) return;
-    // Preenche o nome do aluno no campo de configurações (a sidebar mostra o login)
+    if (dadosAluno.nota_corte) notaCorte = dadosAluno.nota_corte;  // mantém cores/situação do aluno em sintonia com o corte
+    // Mostra o NOME do aluno (vindo do aluno_id, não da matrícula usada no login)
+    // no campo de configurações e no canto inferior esquerdo da barra lateral.
     const cfgNome = document.getElementById('cfg-nome');
     if (cfgNome) cfgNome.value = dadosAluno.nome;
+    const displayName = document.getElementById('display-name');
+    if (displayName) displayName.textContent = dadosAluno.nome;
 
     renderInicio();
     renderDesempenho();
@@ -1615,22 +1622,24 @@
 
   // ── FUNÇÕES DE RENDER ──
 
+  // As cores/situação usam a nota de corte configurável (padrão 6). "Recuperação"
+  // fica na faixa de 2 pontos abaixo do corte.
   function badgeSituacao(media, situacaoFaltas) {
     if (situacaoFaltas === 'Reprovado por falta') return '<span class="badge-status bad">Reprov. Falta</span>';
-    if (media >= 6)  return '<span class="badge-status ok">Aprovado</span>';
-    if (media >= 4)  return '<span class="badge-status warn">Recuperação</span>';
+    if (media >= notaCorte)      return '<span class="badge-status ok">Aprovado</span>';
+    if (media >= notaCorte - 2)  return '<span class="badge-status warn">Recuperação</span>';
     return '<span class="badge-status bad">Reprovando</span>';
   }
 
   function corMedia(media) {
-    if (media >= 6) return 'var(--text)';
-    if (media >= 4) return '#fbbf24';
+    if (media >= notaCorte) return 'var(--text)';
+    if (media >= notaCorte - 2) return '#fbbf24';
     return '#f87171';
   }
 
   function corBarra(media) {
-    if (media >= 6) return 'linear-gradient(90deg,var(--accent),var(--accent2))';
-    if (media >= 4) return 'linear-gradient(90deg,#fbbf24,#f59e0b)';
+    if (media >= notaCorte) return 'linear-gradient(90deg,var(--accent),var(--accent2))';
+    if (media >= notaCorte - 2) return 'linear-gradient(90deg,#fbbf24,#f59e0b)';
     return 'linear-gradient(90deg,#f87171,#ef4444)';
   }
 
@@ -1655,7 +1664,7 @@
     }
 
     // Em atenção
-    const emAtencao = materias.filter(m => d.medias[m] < 6 || (d.faltas[m] && d.faltas[m].situacao === 'Reprovado por falta')).length;
+    const emAtencao = materias.filter(m => d.medias[m] < notaCorte || (d.faltas[m] && d.faltas[m].situacao === 'Reprovado por falta')).length;
 
     const linhasSituacao = materias.map(m => {
       const media = d.medias[m].toFixed(1);
@@ -1665,7 +1674,14 @@
       return `<tr><td>${m}</td><td>${media}</td><td>${freq}</td><td>${sit}</td></tr>`;
     }).join('');
 
+    const recadoHtml = d.observacao ? `
+      <div class="table-wrap" style="padding:14px 16px;border-left:3px solid var(--accent2);">
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Recado do professor</div>
+        <div style="font-size:13.5px;color:var(--text);">${d.observacao}</div>
+      </div>` : '';
+
     document.getElementById('inicio-content').innerHTML = `
+      ${recadoHtml}
       <div class="cards-grid">
         <div class="stat-card"><div class="card-label">Média Geral</div><div class="card-value">${mediaGeral}</div><div class="card-sub">${materias.length} disciplina(s)</div></div>
         <div class="stat-card"><div class="card-label">Frequência Geral</div><div class="card-value">${freqGeral}%</div><div class="card-sub">${totalFaltas} falta(s) no total</div></div>
@@ -1856,95 +1872,311 @@
         cont.innerHTML = `<p style="color:var(--text-muted);font-size:13px;">${json.mensagem || 'Não foi possível carregar os alunos.'}</p>`;
         return;
       }
+      dadosProfessor = json;                              // guarda p/ filtro/busca/CSV sem refetch
+      if (json.nota_corte) notaCorte = json.nota_corte;   // mantém cores/situação em sintonia
+      const alunos = json.alunos;
 
-      // Formulário para o professor lançar nota em qualquer aluno.
-      // O <select> lista os alunos e o <datalist> sugere as matérias já existentes.
-      const opcoesAlunos = json.alunos.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
+      // Opções reaproveitadas pelos vários formulários
+      const opcoesAlunos = alunos.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
       const materiasSet = new Set();
-      json.alunos.forEach(a => Object.keys(a.medias).forEach(m => materiasSet.add(m)));
+      alunos.forEach(a => Object.keys(a.medias).forEach(m => materiasSet.add(m)));
       const opcoesMaterias = [...materiasSet].sort().map(m => `<option value="${m}"></option>`).join('');
-      const formLancarNota = `
-        <div class="table-wrap" style="padding:16px 18px;">
-          <div class="table-title" style="padding:0 0 12px;">Lançar nota</div>
-          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
-            <div style="display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Aluno</label>
-              <select id="nota-aluno" class="config-input">${opcoesAlunos}</select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Matéria</label>
-              <input id="nota-materia" class="config-input" list="lista-materias" placeholder="Ex: Engenharia de Dados">
-              <datalist id="lista-materias">${opcoesMaterias}</datalist>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Nota</label>
-              <input id="nota-valor" class="config-input" type="number" min="0" max="10" step="0.1" placeholder="0–10" style="min-width:90px;">
-            </div>
-            <button class="btn-config-save" style="padding:9px 20px;" onclick="lancarNota()">Lançar nota</button>
+
+      const lbl = 'font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;';
+      const campo = 'display:flex;flex-direction:column;gap:4px;';
+      const fbS = 'font-size:12.5px;margin-top:8px;min-height:16px;';
+
+      // ── Cartões de ação do professor ──
+      const acoes = `
+        <datalist id="materias-prof">${opcoesMaterias}</datalist>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px;margin-bottom:16px;">
+
+          <div class="table-wrap" style="padding:16px 18px;">
+            <div class="table-title" style="padding:0 0 12px;">Lançar nota</div>
+            <div style="${campo}"><label style="${lbl}">Aluno</label><select id="nota-aluno" class="config-input">${opcoesAlunos}</select></div>
+            <div style="${campo};margin-top:8px;"><label style="${lbl}">Matéria</label><input id="nota-materia" class="config-input" list="materias-prof" placeholder="Ex: Engenharia de Dados"></div>
+            <div style="${campo};margin-top:8px;"><label style="${lbl}">Nota</label><input id="nota-valor" class="config-input" type="number" min="0" max="10" step="0.1" placeholder="0–10"></div>
+            <button class="btn-config-save" style="margin-top:12px;" onclick="lancarNota()">Lançar nota</button>
+            <div id="nota-feedback" style="${fbS}"></div>
           </div>
-          <div id="nota-feedback" style="font-size:12.5px;margin-top:10px;min-height:16px;"></div>
+
+          <div class="table-wrap" style="padding:16px 18px;">
+            <div class="table-title" style="padding:0 0 12px;">Lançar / atualizar falta</div>
+            <div style="${campo}"><label style="${lbl}">Aluno</label><select id="falta-aluno" class="config-input">${opcoesAlunos}</select></div>
+            <div style="${campo};margin-top:8px;"><label style="${lbl}">Matéria</label><input id="falta-materia" class="config-input" list="materias-prof" placeholder="Ex: Engenharia de Dados"></div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <div style="${campo};flex:1;"><label style="${lbl}">Faltas</label><input id="falta-qtd" class="config-input" type="number" min="0" placeholder="0"></div>
+              <div style="${campo};flex:1;"><label style="${lbl}">Total aulas</label><input id="falta-total" class="config-input" type="number" min="1" placeholder="40"></div>
+            </div>
+            <button class="btn-config-save" style="margin-top:12px;" onclick="lancarFalta()">Salvar falta</button>
+            <div id="falta-feedback" style="${fbS}"></div>
+          </div>
+
+          <div class="table-wrap" style="padding:16px 18px;">
+            <div class="table-title" style="padding:0 0 12px;">Agendamento</div>
+            <div style="${campo}"><label style="${lbl}">Para</label><select id="prova-alvo" class="config-input"><option value="turma">Turma toda</option>${opcoesAlunos}</select></div>
+            <div style="${campo};margin-top:8px;"><label style="${lbl}">Matéria</label><input id="prova-materia" class="config-input" list="materias-prof" placeholder="Ex: Todas as matérias"></div>
+            <div style="${campo};margin-top:8px;"><label style="${lbl}">Data</label><input id="prova-data" class="config-input" type="date"></div>
+            <div style="${campo};margin-top:8px;"><label style="${lbl}">Conteúdo</label><input id="prova-conteudo" class="config-input" placeholder="O que cai na prova"></div>
+            <button class="btn-config-save" style="margin-top:12px;" onclick="ConcluirAgendamento()">Concluir Agendamento</button>
+            <div id="prova-feedback" style="${fbS}"></div>
+          </div>
+
+          <div class="table-wrap" style="padding:16px 18px;">
+            <div class="table-title" style="padding:0 0 12px;">Cadastrar aluno</div>
+            <div style="${campo}"><label style="${lbl}">Nome</label><input id="novo-nome" class="config-input" placeholder="Nome do aluno"></div>
+            <div style="${campo};margin-top:8px;"><label style="${lbl}">Usuário (matrícula)</label><input id="novo-user" class="config-input" placeholder="Ex: 2612388"></div>
+            <div style="${campo};margin-top:8px;"><label style="${lbl}">Senha inicial</label><input id="novo-senha" class="config-input" placeholder="senha"></div>
+            <button class="btn-config-save" style="margin-top:12px;" onclick="cadastrarAluno()">Cadastrar aluno</button>
+            <div id="aluno-feedback" style="${fbS}"></div>
+          </div>
+
+          <div class="table-wrap" style="padding:16px 18px;">
+            <div class="table-title" style="padding:0 0 12px;">Resetar senha</div>
+            <div style="${campo}"><label style="${lbl}">Aluno</label><select id="reset-aluno" class="config-input">${opcoesAlunos}</select></div>
+            <div style="${campo};margin-top:8px;"><label style="${lbl}">Nova senha</label><input id="reset-senha" class="config-input" placeholder="nova senha"></div>
+            <button class="btn-config-save" style="margin-top:12px;" onclick="resetarSenha()">Redefinir senha</button>
+            <div id="reset-feedback" style="${fbS}"></div>
+          </div>
+
+          <div class="table-wrap" style="padding:16px 18px;">
+            <div class="table-title" style="padding:0 0 12px;">Nota de corte (aprovação)</div>
+            <div style="${campo}"><label style="${lbl}">Média mínima para aprovar</label><input id="corte-valor" class="config-input" type="number" min="0" max="10" step="0.5" value="${notaCorte}"></div>
+            <p style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">Afeta "em risco", cores e situação no sistema todo.</p>
+            <button class="btn-config-save" style="margin-top:8px;" onclick="salvarNotaCorte()">Salvar nota de corte</button>
+            <div id="corte-feedback" style="${fbS}"></div>
+          </div>
+
         </div>`;
 
-      // Cards-resumo da turma
+      // ── Controles: busca, filtro e exportação ──
+      const controles = `
+        <div class="table-wrap" style="padding:14px 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px;">
+          <input id="prof-busca" class="config-input" placeholder="Buscar aluno..." style="flex:1;min-width:160px;" oninput="filtrarProf()" value="${filtroProf.busca}">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);cursor:pointer;">
+            <input type="checkbox" id="prof-risco" onchange="filtrarProf()" ${filtroProf.soRisco ? 'checked' : ''}> só em risco
+          </label>
+          <button class="btn-config-save" onclick="exportarCSV()">Exportar CSV</button>
+        </div>`;
+
+      // ── Cards-resumo da turma ──
       const r = json.resumo;
       const resumoCards = `
         <div class="cards-grid">
           <div class="stat-card"><div class="card-label">Total de Alunos</div><div class="card-value">${r.total_alunos}</div><div class="card-sub">cadastrados</div></div>
-          <div class="stat-card"><div class="card-label">Média da Turma</div><div class="card-value" style="color:${corMedia(r.media_turma)}">${r.media_turma.toFixed(1)}</div><div class="card-sub">de todas as disciplinas</div></div>
+          <div class="stat-card"><div class="card-label">Média da Turma</div><div class="card-value" style="color:${corMedia(r.media_turma)}">${r.media_turma.toFixed(1)}</div><div class="card-sub">corte ${notaCorte}</div></div>
           <div class="stat-card"><div class="card-label">Frequência Média</div><div class="card-value">${r.frequencia_media}%</div><div class="card-sub">presença da turma</div></div>
           <div class="stat-card"><div class="card-label">Alunos em Risco</div><div class="card-value" style="color:${r.alunos_em_risco ? '#f87171' : 'var(--text)'}">${r.alunos_em_risco}</div><div class="card-sub">precisam de atenção</div></div>
         </div>`;
 
-      // Tabela geral: uma linha por aluno
-      const linhas = json.alunos.map(a => {
-        const situacao = a.em_risco.length
-          ? '<span class="badge-status bad">Em risco</span>'
-          : '<span class="badge-status ok">Regular</span>';
-        return `<tr>
-          <td>${a.nome}</td>
-          <td><strong style="color:${corMedia(a.media_geral)}">${a.media_geral.toFixed(1)}</strong></td>
-          <td>${a.frequencia_geral}%</td>
-          <td>${a.total_disciplinas}</td>
-          <td>${a.em_risco.length ? a.em_risco.join(', ') : '—'}</td>
-          <td>${situacao}</td>
-        </tr>`;
-      }).join('');
-      const tabelaGeral = `
-        <div class="table-wrap">
-          <div class="table-title">Desempenho dos Alunos</div>
-          <table class="data-table">
-            <thead><tr><th>Aluno</th><th>Média Geral</th><th>Frequência</th><th>Disciplinas</th><th>Disciplinas em Risco</th><th>Situação</th></tr></thead>
-            <tbody>${linhas}</tbody>
-          </table>
-        </div>`;
-
-      // Detalhamento: as matérias de cada aluno, agora com TODAS as notas lançadas
-      const detalhes = json.alunos.map(a => {
-        const notasMat = a.notas_por_materia || {};
-        const linhasMat = Object.keys(a.medias).map(m => {
-          const media = a.medias[m];
-          const f = a.faltas[m];
-          const freq = f ? Math.round(((f.total - f.faltas) / f.total) * 100) + '%' : '—';
-          const sit = badgeSituacao(media, f ? f.situacao : 'ok');
-          const notas = (notasMat[m] && notasMat[m].length) ? notasMat[m].join(', ') : '—';
-          return `<tr><td>${m}</td><td>${notas}</td><td><strong style="color:${corMedia(media)}">${media.toFixed(1)}</strong></td><td>${freq}</td><td>${sit}</td></tr>`;
-        }).join('');
-        return `
-          <div class="table-wrap">
-            <div class="table-title">${a.nome} · média ${a.media_geral.toFixed(1)} · frequência ${a.frequencia_geral}%</div>
-            <table class="data-table">
-              <thead><tr><th>Disciplina</th><th>Notas lançadas</th><th>Média</th><th>Frequência</th><th>Situação</th></tr></thead>
-              <tbody>${linhasMat}</tbody>
-            </table>
-          </div>`;
-      }).join('');
-
-      cont.innerHTML = formLancarNota + resumoCards + tabelaGeral
-        + `<div class="page-header" style="margin:24px 0 16px;"><h2 style="font-size:16px;">Detalhamento por Aluno</h2></div>`
-        + detalhes;
+      cont.innerHTML = acoes + controles + resumoCards + `<div id="prof-lista"></div>`;
+      renderListaProf();
     } catch (e) {
       cont.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Erro ao conectar com o servidor. Verifique se o Flask está rodando.</p>';
     }
+  }
+
+  // Monta só as tabelas (geral + detalhamento), aplicando busca/filtro. Fica separado
+  // do resto pra busca não recriar os formulários (e não perder o foco do campo).
+  function renderListaProf() {
+    if (!dadosProfessor) return;
+    const busca = (filtroProf.busca || '').toLowerCase();
+    const alunos = dadosProfessor.alunos.filter(a =>
+      (!busca || a.nome.toLowerCase().includes(busca)) &&
+      (!filtroProf.soRisco || a.em_risco.length)
+    );
+
+    const linhas = alunos.map(a => {
+      const situacao = a.em_risco.length
+        ? '<span class="badge-status bad">Em risco</span>'
+        : '<span class="badge-status ok">Regular</span>';
+      return `<tr>
+        <td>${a.nome}</td>
+        <td><strong style="color:${corMedia(a.media_geral)}">${a.media_geral.toFixed(1)}</strong></td>
+        <td>${a.frequencia_geral}%</td>
+        <td>${a.total_disciplinas}</td>
+        <td>${a.em_risco.length ? a.em_risco.join(', ') : '—'}</td>
+        <td>${situacao}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" style="color:var(--text-muted);">Nenhum aluno encontrado.</td></tr>';
+
+    const tabelaGeral = `
+      <div class="table-wrap">
+        <div class="table-title">Desempenho dos Alunos (${alunos.length})</div>
+        <table class="data-table">
+          <thead><tr><th>Aluno</th><th>Média Geral</th><th>Frequência</th><th>Disciplinas</th><th>Disciplinas em Risco</th><th>Situação</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>`;
+
+    const detalhes = alunos.map(a => {
+      const det = a.notas_detalhadas || {};
+      const linhasMat = Object.keys(a.medias).map(m => {
+        const media = a.medias[m];
+        const f = a.faltas[m];
+        // Frequência + um "×" para remover o registro de faltas (só aparece se houver falta lançada)
+        const freqCell = f
+          ? `${Math.round(((f.total - f.faltas) / f.total) * 100)}% <a data-aluno="${a.id}" data-materia="${htmlEsc(m)}" onclick="apagarFaltaBtn(this)" title="Remover faltas desta matéria" style="cursor:pointer;opacity:.7;color:#f87171;margin-left:4px;">×</a>`
+          : '—';
+        const sit = badgeSituacao(media, f ? f.situacao : 'ok');
+        const arr = det[m] || [];
+        // Cada nota vira um "chip" com botões de editar (✎) e apagar (×)
+        const notasHtml = arr.length ? arr.map(o => `
+          <span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 6px;margin:2px;font-size:12px;">
+            ${o.nota}
+            <a onclick="editarNotaPrompt(${o.id}, ${o.nota})" title="Editar nota" style="cursor:pointer;opacity:.7;">✎</a>
+            <a onclick="apagarNotaConfirm(${o.id}, ${o.nota})" title="Apagar nota" style="cursor:pointer;opacity:.7;color:#f87171;">×</a>
+          </span>`).join('') : '—';
+        return `<tr><td>${m}</td><td>${notasHtml}</td><td><strong style="color:${corMedia(media)}">${media.toFixed(1)}</strong></td><td>${freqCell}</td><td>${sit}</td></tr>`;
+      }).join('');
+      return `
+        <div class="table-wrap">
+          <div class="table-title">${a.nome} · média ${a.media_geral.toFixed(1)} · frequência ${a.frequencia_geral}%</div>
+          <table class="data-table">
+            <thead><tr><th>Disciplina</th><th>Notas lançadas</th><th>Média</th><th>Frequência</th><th>Situação</th></tr></thead>
+            <tbody>${linhasMat}</tbody>
+          </table>
+          <div style="padding:12px 16px;border-top:1px solid var(--border);">
+            <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Recado para ${a.nome}</label>
+            <textarea id="obs-${a.id}" class="config-input" rows="2" style="width:100%;margin-top:6px;resize:vertical;" placeholder="Recado que o aluno vê e que a IA usa no contexto...">${a.observacao || ''}</textarea>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+              <button class="btn-config-save" onclick="salvarObservacao(${a.id})">Salvar recado</button>
+              <span id="obs-fb-${a.id}" style="font-size:12.5px;"></span>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('prof-lista').innerHTML = tabelaGeral
+      + `<div class="page-header" style="margin:24px 0 16px;"><h2 style="font-size:16px;">Detalhamento por Aluno</h2></div>`
+      + detalhes;
+  }
+
+  // Feedback inline reaproveitado pelas ações do professor
+  function fbProf(id, ok, msg) {
+    const el = document.getElementById(id);
+    if (el) { el.style.color = ok ? '#4ade80' : '#f87171'; el.textContent = msg; }
+  }
+
+  // Helper genérico: valida -> chama o backend -> recarrega o painel -> mostra feedback
+  async function acaoProf(rota, corpo, fbId, erroValidacao) {
+    if (erroValidacao) { fbProf(fbId, false, erroValidacao); return; }
+    try {
+      const res = await chamarFlask(rota, corpo);
+      if (res.status === 'sucesso') {
+        await renderProfessor();
+        fbProf(fbId, true, res.mensagem || 'Feito!');
+      } else {
+        fbProf(fbId, false, res.mensagem || 'Não foi possível concluir.');
+      }
+    } catch (e) { fbProf(fbId, false, 'Erro ao conectar com o servidor.'); }
+  }
+
+  async function lancarFalta() {
+    const aluno_id = Number(document.getElementById('falta-aluno').value);
+    const materia = document.getElementById('falta-materia').value.trim();
+    const faltas = parseInt(document.getElementById('falta-qtd').value, 10);
+    const total_aulas = parseInt(document.getElementById('falta-total').value, 10);
+    let err = '';
+    if (!aluno_id || !materia || isNaN(faltas) || isNaN(total_aulas)) err = 'Preencha aluno, matéria, faltas e total.';
+    else if (total_aulas <= 0 || faltas < 0 || faltas > total_aulas) err = 'Faltas devem estar entre 0 e o total de aulas.';
+    await acaoProf('/cadastrar_falta', { aluno_id, materia, faltas, total_aulas }, 'falta-feedback', err);
+  }
+
+  async function agendarProva() {
+    const aluno_id = document.getElementById('prova-alvo').value;   // 'turma' ou id (o backend trata os dois)
+    const materia = document.getElementById('prova-materia').value.trim();
+    const data = document.getElementById('prova-data').value;
+    const conteudo = document.getElementById('prova-conteudo').value.trim();
+    const err = (!materia || !data) ? 'Preencha pelo menos matéria e data.' : '';
+    await acaoProf('/cadastrar_prova', { aluno_id, materia, data, conteudo }, 'prova-feedback', err);
+  }
+
+  async function cadastrarAluno() {
+    const nome = document.getElementById('novo-nome').value.trim();
+    const username = document.getElementById('novo-user').value.trim();
+    const senha = document.getElementById('novo-senha').value;
+    const err = (!nome || !username || !senha) ? 'Preencha nome, usuário e senha.' : '';
+    await acaoProf('/cadastrar_aluno', { nome, username, senha }, 'aluno-feedback', err);
+  }
+
+  async function resetarSenha() {
+    const aluno_id = Number(document.getElementById('reset-aluno').value);
+    const senha = document.getElementById('reset-senha').value;
+    const err = (!aluno_id || !senha) ? 'Escolha o aluno e digite a nova senha.' : '';
+    await acaoProf('/resetar_senha', { aluno_id, senha }, 'reset-feedback', err);
+  }
+
+  async function salvarNotaCorte() {
+    const corte = parseFloat(document.getElementById('corte-valor').value);
+    const err = (isNaN(corte) || corte < 0 || corte > 10) ? 'A nota de corte deve estar entre 0 e 10.' : '';
+    await acaoProf('/config', { nota_corte: corte }, 'corte-feedback', err);
+  }
+
+  // Observação não recarrega o painel (pra não perder a posição); atualiza só o cache.
+  async function salvarObservacao(alunoId) {
+    const texto = document.getElementById('obs-' + alunoId).value;
+    try {
+      const res = await chamarFlask('/observacao', { aluno_id: alunoId, texto });
+      fbProf('obs-fb-' + alunoId, res.status === 'sucesso', res.mensagem || (res.status === 'sucesso' ? 'Salvo!' : 'Erro.'));
+      if (res.status === 'sucesso' && dadosProfessor) {
+        const a = dadosProfessor.alunos.find(x => x.id === alunoId);
+        if (a) a.observacao = texto.trim();
+      }
+    } catch (e) { fbProf('obs-fb-' + alunoId, false, 'Erro ao conectar.'); }
+  }
+
+  async function editarNotaPrompt(notaId, atual) {
+    const nova = prompt('Novo valor da nota (0 a 10):', atual);
+    if (nova === null) return;
+    const n = parseFloat(String(nova).replace(',', '.'));
+    if (isNaN(n) || n < 0 || n > 10) { alert('Nota inválida. Use um número de 0 a 10.'); return; }
+    const res = await chamarFlask('/editar_nota', { nota_id: notaId, nota: n });
+    if (res.status === 'sucesso') renderProfessor(); else alert(res.mensagem || 'Não foi possível editar.');
+  }
+
+  async function apagarNotaConfirm(notaId, valor) {
+    if (!confirm('Apagar a nota ' + valor + '? Essa ação não pode ser desfeita.')) return;
+    const res = await chamarFlask('/apagar_nota', { nota_id: notaId });
+    if (res.status === 'sucesso') renderProfessor(); else alert(res.mensagem || 'Não foi possível apagar.');
+  }
+
+  // Escapa texto para usar com segurança dentro de um atributo HTML (matérias têm acento/vírgula)
+  function htmlEsc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Remove o registro de faltas de uma matéria. Lê aluno/matéria do próprio botão (data-*)
+  // para evitar problemas de escape com nomes que têm vírgula ou acento.
+  async function apagarFaltaBtn(el) {
+    const aluno_id = Number(el.dataset.aluno);
+    const materia = el.dataset.materia;
+    if (!confirm('Remover o registro de faltas de "' + materia + '"?')) return;
+    const res = await chamarFlask('/apagar_falta', { aluno_id, materia });
+    if (res.status === 'sucesso') renderProfessor(); else alert(res.mensagem || 'Não foi possível remover.');
+  }
+
+  function filtrarProf() {
+    filtroProf.busca = document.getElementById('prof-busca').value;
+    filtroProf.soRisco = document.getElementById('prof-risco').checked;
+    renderListaProf();
+  }
+
+  // Gera um CSV da turma (com BOM, pra o Excel ler os acentos certos) e baixa.
+  function exportarCSV() {
+    if (!dadosProfessor) return;
+    const linhas = [['Aluno', 'Media Geral', 'Frequencia', 'Disciplinas', 'Em Risco', 'Situacao']];
+    dadosProfessor.alunos.forEach(a => {
+      linhas.push([a.nome, a.media_geral, a.frequencia_geral + '%', a.total_disciplinas,
+        a.em_risco.join('; ') || '-', a.em_risco.length ? 'Em risco' : 'Regular']);
+    });
+    const csv = linhas.map(l => l.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = 'turma.csv';
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   // Professor lança uma nota num aluno e o painel recarrega já com a nota nova.
@@ -2280,6 +2512,25 @@
     }
     setLoading(false);
     salvarConversas();   // persiste a conversa no banco a cada troca de mensagens
+
+    // Gera um título-resumo pela IA uma única vez, logo após a primeira resposta.
+    if (conversaAtual && !conversaAtual.tituloAuto && conversaAtual.mensagens.length >= 2) {
+      conversaAtual.tituloAuto = true;
+      gerarTituloConversa(conversaAtual);   // roda em segundo plano, não trava o chat
+    }
+  }
+
+  // Pede à IA um título curto que resume a conversa e atualiza o histórico.
+  // Se a IA não responder, mantém o título atual (a primeira mensagem).
+  async function gerarTituloConversa(conv) {
+    try {
+      const res = await chamarFlask('/titulo_conversa', { mensagens: conv.mensagens.slice(0, 6) });
+      if (res.status === 'sucesso' && res.titulo) {
+        conv.titulo = res.titulo;
+        renderHistorico();
+        salvarConversas();
+      }
+    } catch (e) { /* offline / IA fora: mantém a primeira mensagem como título */ }
   }
 
   // ── PERSISTÊNCIA DAS CONVERSAS (por usuário, no banco) ──

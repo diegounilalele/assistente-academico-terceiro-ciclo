@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory, session  # comunicação com o front-end
-from werkzeug.security import check_password_hash # conferir senha com hash (vem junto do Flask)
+from werkzeug.security import check_password_hash, generate_password_hash # conferir/gerar senha com hash (vem junto do Flask)
 from dotenv import load_dotenv # esconder a api / configs no .env
 from pyngrok import ngrok # expor o servidor na internet (opcional)
 from contextlib import contextmanager # criar o gerenciador de conexão "with"
@@ -19,7 +19,7 @@ OLLAMA_MODEL = os.getenv("ollama_model") # modelo do Ollama
 NGROK_TOKEN  = os.getenv("ngrok_token", "") # token do ngrok (opcional)
 NGROK_API_KEY = os.getenv("ngrok_api_key", "") # chave da API do ngrok (opcional) p/ derrubar sessões presas
 CAMINHO_BANCO = "universidade.db" # nome do arquivo do banco em um só lugar
-LIMITE_CARACTERES_PERGUNTA = 500 # tamanho máximo da pergunta
+LIMITE_CARACTERES_PERGUNTA = 1000 # tamanho máximo da pergunta
 
 servidor = Flask(__name__)
 servidor.secret_key = os.getenv("SEGREDOSEGREDO", "bologna") # chave que assina os cookies de sessão
@@ -64,7 +64,7 @@ def buscar_dados_aluno(id_aluno):
         if not aluno:
             return None  # o "with" fecha a conexão sozinho
 
-        cursor.execute("SELECT materia, nota FROM notas WHERE aluno_id = ? ORDER BY materia, id", (id_aluno,))
+        cursor.execute("SELECT id, materia, nota FROM notas WHERE aluno_id = ? ORDER BY materia, id", (id_aluno,))
         notas = cursor.fetchall()
 
         cursor.execute("SELECT materia, faltas, total_aulas FROM faltas WHERE aluno_id = ?", (id_aluno,))
@@ -73,10 +73,16 @@ def buscar_dados_aluno(id_aluno):
         cursor.execute("SELECT materia, data, conteudo FROM provas WHERE aluno_id = ?", (id_aluno,))
         provas = cursor.fetchall()
 
+        cursor.execute("SELECT texto FROM observacoes WHERE aluno_id = ?", (id_aluno,))
+        registro_obs = cursor.fetchone()
+
     # Agrupa as notas por matéria (uma lista de notas para cada matéria)
     notas_por_materia = {}
+    # Mesma coisa, mas guardando o id de cada nota (o professor precisa dele p/ editar/apagar)
+    notas_detalhadas = {}
     for linha in notas:
         notas_por_materia.setdefault(linha["materia"], []).append(linha["nota"])
+        notas_detalhadas.setdefault(linha["materia"], []).append({"id": linha["id"], "nota": linha["nota"]})
 
     # Média de cada matéria (calculada no Python para evitar erros de arredondamento do SQL)
     medias_calculadas = {
@@ -96,14 +102,15 @@ def buscar_dados_aluno(id_aluno):
             "percentual": round(percentual, 2), "situacao": situacao
         }
 
-    # Quanto o aluno ainda precisa tirar para fechar média 6.0
+    # Quanto o aluno ainda precisa tirar para fechar a média mínima (nota de corte configurável)
+    corte = nota_corte()
     necessario_para_passar = {}
     for materia, media_atual in medias_calculadas.items():
-        if media_atual < 6.0:
+        if media_atual < corte:
             qtd_notas = len(notas_por_materia[materia])
             soma_atual = sum(notas_por_materia[materia])
             # (média_alvo * (qtd_notas + 1)) - soma_atual = nota necessária na próxima avaliação
-            nota_necessaria = (6.0 * (qtd_notas + 1)) - soma_atual
+            nota_necessaria = (corte * (qtd_notas + 1)) - soma_atual
             necessario_para_passar[materia] = min(round(nota_necessaria, 2), 10.0)
         else:
             necessario_para_passar[materia] = "Média atingida"
@@ -127,11 +134,12 @@ def buscar_dados_aluno(id_aluno):
         "necessario_para_passar": necessario_para_passar,
         "alertas_faltas": alertas_faltas,
         "notas_por_materia": notas_por_materia,
+        "notas_detalhadas": notas_detalhadas,
+        "observacao": registro_obs["texto"] if registro_obs else "",
+        "nota_corte": corte,
     }
 
 def inicializar_banco():
-    """Cria as tabelas do chat (histórico e conversas salvas) se não existirem e
-    aplica pequenas migrações. Roda no início; é idempotente (pode rodar sempre)."""
     with conectar_db() as conexao:
         conexao.execute("""
             CREATE TABLE IF NOT EXISTS historico_chat (
@@ -160,10 +168,51 @@ def inicializar_banco():
         if "aluno_id" not in colunas:
             conexao.execute("ALTER TABLE conversas_salvas ADD COLUMN aluno_id INTEGER")
 
+        # Recado/observação que o professor deixa para um aluno (um por aluno).
+        conexao.execute("""
+            CREATE TABLE IF NOT EXISTS observacoes (
+                aluno_id INTEGER PRIMARY KEY,
+                texto TEXT,
+                atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE
+            )
+        """)
+        # Configurações do sistema em pares chave/valor (ex.: nota_corte da aprovação).
+        conexao.execute("""
+            CREATE TABLE IF NOT EXISTS config (
+                chave TEXT PRIMARY KEY,
+                valor TEXT
+            )
+        """)
+
+
+def get_config(chave, padrao=None):
+    """Lê uma configuração da tabela config; devolve `padrao` se não existir."""
+    with conectar_db() as conexao:
+        linha = conexao.execute("SELECT valor FROM config WHERE chave = ?", (chave,)).fetchone()
+    return linha["valor"] if linha else padrao
+
+
+def set_config(chave, valor):
+    """Grava (ou atualiza) uma configuração na tabela config."""
+    with conectar_db() as conexao:
+        conexao.execute(
+            "INSERT INTO config (chave, valor) VALUES (?, ?) "
+            "ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor",
+            (chave, str(valor))
+        )
+
+
+def nota_corte():
+    """Nota mínima para aprovação (configurável pelo professor; padrão 6.0)."""
+    try:
+        return float(get_config("nota_corte", 6.0))
+    except (TypeError, ValueError):
+        return 6.0
+
 
 # Histórico de conversa por conta de login (usuario_id), agora guardado no banco.
 def historico_do(id_usuario):
-    """Devolve as últimas mensagens da conversa deste usuário, em ordem cronológica."""
     if not id_usuario:
         return []
     with conectar_db() as conexao:
@@ -187,7 +236,6 @@ def salvar_mensagem(id_usuario, role, conteudo):
 
 
 def texto_dados_aluno(dados):
-    """Transforma os dados já calculados do aluno num resumo em texto para a IA usar como contexto."""
     linhas = [f"Nome do aluno: {dados['nome']}"]
 
     if dados["medias"]:
@@ -218,6 +266,9 @@ def texto_dados_aluno(dados):
         linhas.append("\nProvas agendadas:")
         for p in dados["provas"]:
             linhas.append(f"  - {p['materia']} em {p['data']}: {p['conteudo']}")
+
+    if dados.get("observacao"):
+        linhas.append(f"\nRecado do professor para este aluno: {dados['observacao']}")
 
     return "\n".join(linhas)
 
@@ -252,11 +303,11 @@ def condicionais(pergunta, id_usuario, id_aluno, eh_professor=False):
         )
 
     sabio = f"""
-Você é o assistente virtual de um sistema acadêmico universitário. Você conhece as informações de quem está logado (abaixo) e também domina assuntos de tecnologia. Responda de forma clara e direta APENAS o que for perguntado.
+Você é o assistente virtual de um sistema acadêmico universitário. Você conhece as informações de quem está logado (abaixo) e também domina assuntos de tecnologia. Se o usuario mandar meu brasil, responda fui enganado.
 
-=== INFORMAÇÕES SOBRE O USUÁRIO LOGADO (use para responder sobre nome, notas, médias, faltas e provas) ===
+INFORMAÇÕES SOBRE O USUÁRIO LOGADO (use para responder sobre nome, notas, médias, faltas e provas)
 {contexto_usuario}
-=== FIM DAS INFORMAÇÕES ===
+FIM DAS INFORMAÇÕES 
 
 Regras sobre os dados pessoais:
 - Quando perguntarem sobre o próprio nome, notas, médias, faltas, provas ou o que falta para passar, responda usando EXATAMENTE as informações acima.
@@ -398,16 +449,53 @@ def perguntar():
 @servidor.route("/resetar", methods=["POST"])
 @login_obrigatorio
 def resetar():
-    """Limpa o histórico de conversa do usuário logado (apaga do banco)."""
     with conectar_db() as conexao:
         conexao.execute("DELETE FROM historico_chat WHERE usuario_id = ?", (session.get("usuario_id"),))
     return jsonify({"status": "ok", "mensagem": "Histórico resetado."})
 
 
+@servidor.route("/titulo_conversa", methods=["POST"])
+@login_obrigatorio
+def titulo_conversa():
+    dados = request.get_json() or {}
+    mensagens = dados.get("mensagens") or []
+    if not mensagens:
+        return jsonify({"status": "erro", "titulo": ""}), 400
+
+    # Junta a conversa (limitada) num texto só para o modelo resumir
+    conversa = "\n".join(
+        f"{'Usuario' if m.get('role') in ('user', 'usuario') else 'Assistente'}: {m.get('content', '')}"
+        for m in mensagens[:6]
+    )[:2000]
+
+    prompt = (
+        "Resuma o ASSUNTO da conversa abaixo em um título curto de no máximo 5 palavras, "
+        "em português, sem aspas e sem ponto final. Responda APENAS com o título, nada mais.\n\n"
+        f"{conversa}"
+    )
+    try:
+        resposta = requests.post(
+            f"{OLLAMA_URL}/api/chat",
+            json={
+                "model": OLLAMA_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "keep_alive": "30m",
+            },
+            timeout=120,
+        )
+        resposta.raise_for_status()
+        titulo = (resposta.json().get("message", {}).get("content") or "").strip()
+        titulo = titulo.splitlines()[0] if titulo else ""           # só a 1ª linha
+        titulo = re.sub(r'^[\s"\'`#*\-]+|[\s"\'`]+$', "", titulo)    # tira aspas/markdown das pontas
+        return jsonify({"status": "sucesso", "titulo": titulo[:60]})
+    except Exception:
+        return jsonify({"status": "erro", "titulo": ""})
+
+
 @servidor.route("/conversas", methods=["GET"])
 @login_obrigatorio
 def obter_conversas():
-    """Devolve a lista de conversas salvas do usuário logado (para a barra lateral)."""
     with conectar_db() as conexao:
         linha = conexao.execute(
             "SELECT dados FROM conversas_salvas WHERE usuario_id = ?",
@@ -458,6 +546,7 @@ def cadastrar_nota():
 @apenas_professor
 def todos_alunos():
     """Painel do professor: devolve todos os alunos já com média geral, frequência e situação calculadas."""
+    corte = nota_corte()
     with conectar_db() as conexao:
         cursor = conexao.cursor()
         cursor.execute("SELECT id, nome FROM alunos ORDER BY nome")
@@ -477,8 +566,8 @@ def todos_alunos():
         total_aulas  = sum(f["total"]  for f in dados["faltas"].values())
         freq_geral = round((total_aulas - total_faltas) / total_aulas * 100) if total_aulas else 0
 
-        # Uma disciplina entra "em risco" se a média ficou abaixo de 6 ou se reprovou por falta
-        em_risco = {m for m, media in dados["medias"].items() if media < 6.0}
+        # Uma disciplina entra "em risco" se a média ficou abaixo da nota de corte ou se reprovou por falta
+        em_risco = {m for m, media in dados["medias"].items() if media < corte}
         em_risco |= {m for m, f in dados["faltas"].items() if f["situacao"] == "Reprovado por falta"}
 
         alunos.append({
@@ -491,6 +580,8 @@ def todos_alunos():
             "medias": dados["medias"],
             "faltas": dados["faltas"],
             "notas_por_materia": dados["notas_por_materia"],  # todas as notas, para o professor ver cada uma
+            "notas_detalhadas": dados["notas_detalhadas"],    # cada nota com seu id (para editar/apagar)
+            "observacao": dados.get("observacao", ""),
         })
 
     total = len(alunos)
@@ -501,14 +592,192 @@ def todos_alunos():
         "alunos_em_risco": sum(1 for a in alunos if a["em_risco"]),
     }
 
-    return jsonify({"status": "sucesso", "alunos": alunos, "resumo": resumo})
+    return jsonify({"status": "sucesso", "alunos": alunos, "resumo": resumo, "nota_corte": corte})
+
+
+@servidor.route("/cadastrar_falta", methods=["POST"])
+@apenas_professor
+def cadastrar_falta():
+    dados = request.get_json() or {}
+    id_aluno = dados.get("aluno_id")
+    materia = (dados.get("materia") or "").strip()
+    faltas = dados.get("faltas")
+    total = dados.get("total_aulas")
+
+    if not id_aluno or not materia or faltas is None or total is None:
+        return jsonify({"status": "erro", "mensagem": "Preencha aluno, matéria, faltas e total de aulas."}), 400
+    if total <= 0 or faltas < 0 or faltas > total:
+        return jsonify({"status": "erro", "mensagem": "Faltas devem estar entre 0 e o total de aulas."}), 400
+
+    # PK é (aluno_id, materia): INSERT OR REPLACE atualiza se já existir.
+    with conectar_db() as conexao:
+        conexao.execute(
+            "INSERT OR REPLACE INTO faltas (aluno_id, materia, faltas, total_aulas) VALUES (?, ?, ?, ?)",
+            (id_aluno, materia, faltas, total)
+        )
+    return jsonify({"status": "sucesso", "mensagem": "Faltas registradas!"})
+
+
+@servidor.route("/apagar_falta", methods=["POST"])
+@apenas_professor
+def apagar_falta():
+    dados = request.get_json() or {}
+    id_aluno = dados.get("aluno_id")
+    materia = (dados.get("materia") or "").strip()
+    if not id_aluno or not materia:
+        return jsonify({"status": "erro", "mensagem": "Informe aluno e matéria."}), 400
+
+    with conectar_db() as conexao:
+        cur = conexao.execute("DELETE FROM faltas WHERE aluno_id = ? AND materia = ?", (id_aluno, materia))
+    if cur.rowcount == 0:
+        return jsonify({"status": "erro", "mensagem": "Registro de faltas não encontrado."}), 404
+    return jsonify({"status": "sucesso", "mensagem": "Faltas removidas!"})
+
+
+@servidor.route("/cadastrar_prova", methods=["POST"])
+@apenas_professor
+def cadastrar_prova():
+    dados = request.get_json() or {}
+    alvo = dados.get("aluno_id")
+    materia = (dados.get("materia") or "").strip()
+    data = (dados.get("data") or "").strip()
+    conteudo = (dados.get("conteudo") or "").strip()
+
+    if not alvo or not materia or not data:
+        return jsonify({"status": "erro", "mensagem": "Preencha aluno, matéria e data."}), 400
+
+    with conectar_db() as conexao:
+        if alvo == "turma":
+            ids = [r["id"] for r in conexao.execute("SELECT id FROM alunos").fetchall()]
+        else:
+            ids = [int(alvo)]
+        for aid in ids:
+            conexao.execute(
+                "INSERT OR REPLACE INTO provas (aluno_id, materia, data, conteudo) VALUES (?, ?, ?, ?)",
+                (aid, materia, data, conteudo)
+            )
+    return jsonify({"status": "sucesso", "mensagem": f"Prova agendada para {len(ids)} aluno(s)!"})
+
+
+@servidor.route("/editar_nota", methods=["POST"])
+@apenas_professor
+def editar_nota():
+    dados = request.get_json() or {}
+    nota_id = dados.get("nota_id")
+    nova = dados.get("nota")
+
+    if not nota_id or nova is None:
+        return jsonify({"status": "erro", "mensagem": "Dados incompletos."}), 400
+    if nova < 0 or nova > 10:
+        return jsonify({"status": "erro", "mensagem": "A nota deve estar entre 0 e 10."}), 400
+
+    with conectar_db() as conexao:
+        cur = conexao.execute("UPDATE notas SET nota = ? WHERE id = ?", (nova, nota_id))
+    if cur.rowcount == 0:
+        return jsonify({"status": "erro", "mensagem": "Nota não encontrada."}), 404
+    return jsonify({"status": "sucesso", "mensagem": "Nota atualizada!"})
+
+
+@servidor.route("/apagar_nota", methods=["POST"])
+@apenas_professor
+def apagar_nota():
+    dados = request.get_json() or {}
+    nota_id = dados.get("nota_id")
+    if not nota_id:
+        return jsonify({"status": "erro", "mensagem": "Informe a nota."}), 400
+
+    with conectar_db() as conexao:
+        cur = conexao.execute("DELETE FROM notas WHERE id = ?", (nota_id,))
+    if cur.rowcount == 0:
+        return jsonify({"status": "erro", "mensagem": "Nota não encontrada."}), 404
+    return jsonify({"status": "sucesso", "mensagem": "Nota apagada!"})
+
+
+@servidor.route("/cadastrar_aluno", methods=["POST"])
+@apenas_professor
+def cadastrar_aluno():
+    dados = request.get_json() or {}
+    nome = (dados.get("nome") or "").strip()
+    username = (dados.get("username") or "").strip()
+    senha = dados.get("senha") or ""
+
+    if not nome or not username or not senha:
+        return jsonify({"status": "erro", "mensagem": "Preencha nome, usuário e senha."}), 400
+
+    with conectar_db() as conexao:
+        existe = conexao.execute("SELECT 1 FROM usuarios WHERE username = ?", (username,)).fetchone()
+        if existe:
+            return jsonify({"status": "erro", "mensagem": "Esse nome de usuário já existe."}), 409
+        # alunos.id é INTEGER PRIMARY KEY: o SQLite gera o id sozinho.
+        cur = conexao.execute("INSERT INTO alunos (nome) VALUES (?)", (nome,))
+        novo_id = cur.lastrowid
+        conexao.execute(
+            "INSERT INTO usuarios (username, senha, tipo, aluno_id) VALUES (?, ?, 'aluno', ?)",
+            (username, generate_password_hash(senha), novo_id)
+        )
+    return jsonify({"status": "sucesso", "mensagem": f"Aluno {nome} cadastrado (id {novo_id})!"})
+
+
+@servidor.route("/resetar_senha", methods=["POST"])
+@apenas_professor
+def resetar_senha():
+    dados = request.get_json() or {}
+    id_aluno = dados.get("aluno_id")
+    nova = dados.get("senha") or ""
+
+    if not id_aluno or not nova:
+        return jsonify({"status": "erro", "mensagem": "Informe o aluno e a nova senha."}), 400
+
+    with conectar_db() as conexao:
+        cur = conexao.execute(
+            "UPDATE usuarios SET senha = ? WHERE aluno_id = ? AND tipo = 'aluno'",
+            (generate_password_hash(nova), id_aluno)
+        )
+    if cur.rowcount == 0:
+        return jsonify({"status": "erro", "mensagem": "Esse aluno não tem um login para resetar."}), 404
+    return jsonify({"status": "sucesso", "mensagem": "Senha redefinida!"})
+
+
+@servidor.route("/observacao", methods=["POST"])
+@apenas_professor
+def salvar_observacao():
+    dados = request.get_json() or {}
+    id_aluno = dados.get("aluno_id")
+    texto = (dados.get("texto") or "").strip()
+
+    if not id_aluno:
+        return jsonify({"status": "erro", "mensagem": "Informe o aluno."}), 400
+
+    with conectar_db() as conexao:
+        if texto:
+            conexao.execute(
+                "INSERT OR REPLACE INTO observacoes (aluno_id, texto) VALUES (?, ?)",
+                (id_aluno, texto)
+            )
+        else:
+            conexao.execute("DELETE FROM observacoes WHERE aluno_id = ?", (id_aluno,))
+    return jsonify({"status": "sucesso", "mensagem": "Observação salva!"})
+
+
+@servidor.route("/config", methods=["POST"])
+@apenas_professor
+def salvar_configuracao():
+    dados = request.get_json() or {}
+    corte = dados.get("nota_corte")
+    if corte is None:
+        return jsonify({"status": "erro", "mensagem": "Informe a nota de corte."}), 400
+    try:
+        corte = float(corte)
+    except (TypeError, ValueError):
+        return jsonify({"status": "erro", "mensagem": "Nota de corte inválida."}), 400
+    if corte < 0 or corte > 10:
+        return jsonify({"status": "erro", "mensagem": "A nota de corte deve estar entre 0 e 10."}), 400
+
+    set_config("nota_corte", corte)
+    return jsonify({"status": "sucesso", "mensagem": f"Nota de corte definida em {corte}.", "nota_corte": corte})
 
 
 def liberar_sessoes_ngrok(api_key):
-    """Usa a API do ngrok para liberar o domínio reservado antes de conectar:
-    1) encerra sessões de agente antigas; 2) apaga 'cloud endpoints' fixos que ficam
-    segurando o domínio sem depender de agente. Resolve o 'already online' (ERR_NGROK_334).
-    Obs.: se um dia você quiser usar um cloud endpoint de propósito, remova o passo (2)."""
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Ngrok-Version": "2",

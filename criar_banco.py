@@ -37,7 +37,7 @@ cursor.executescript("""
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
         senha TEXT,
-        tipo TEXT,            -- 'professor' ou 'aluno'
+        tipo TEXT,
         aluno_id INTEGER,
         FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE
     );
@@ -86,9 +86,9 @@ else:
         "INSERT INTO usuarios (username, senha, tipo, aluno_id) VALUES (?,?,?,?)",
         [
             ("professor1", generate_password_hash("senha123"), "professor", None),  # professor não tem aluno vinculado
-            ("André", generate_password_hash("senha123"), "aluno", 1), # login do aluno André (id 1)
-            ("Diego", generate_password_hash("senha123"), "aluno", 2), # login do aluno Diego (id 2)
-            ("Tiago", generate_password_hash("senha123"), "aluno", 3), # login do aluno Tiago (id 3)
+            ("2612388", generate_password_hash("senha123"), "aluno", 1), # matrícula do André (aluno_id 1)
+            ("2610725", generate_password_hash("senha123"), "aluno", 2), # matrícula do Diego (aluno_id 2)
+            ("Tiago", generate_password_hash("senha123"), "aluno", 3), # login do aluno Tiago (aluno_id 3)
         ]
     )
 
@@ -112,10 +112,8 @@ else:
     ])
 
     cursor.executemany("INSERT OR IGNORE INTO provas (aluno_id, materia, data, conteudo) VALUES (?,?,?,?)", [
-        # Todas as provas no mesmo dia: 09/06/2026
-        (1, "Engenharia de Dados", "2026-06-09", "Modelagem de dados, SQL e processos de ETL"),
-        (1, "Engenharia de Soluções", "2026-06-09", "Lógica de programação em Python: variáveis, condicionais, laços e funções"),
-        (1, "Fundamentos da Computação e Infraestrutura", "2026-06-09", "Arquitetura de computadores, sistemas operacionais e redes"),
+        # Dia 09/06/2026: prova ÚNICA cobrindo todas as matérias (uma só, não uma por matéria)
+        (1, "Todas as matérias", "2026-06-09", "Prova única cobrindo as 5 matérias: Engenharia de Dados (modelagem de dados, SQL e ETL); Engenharia de Soluções (lógica de programação em Python); Fundamentos da Computação e Infraestrutura (arquitetura de computadores, sistemas operacionais e redes); Cidadania, Ética e Espiritualidade; e Fundamentos Matemáticos para a Computação."),
         # Apresentação do projeto no dia seguinte: 10/06/2026
         (1, "Projeto Integrador", "2026-06-10", "Apresentação final do projeto"),
     ])
@@ -188,8 +186,8 @@ else:
         (1, "Fundamentos Matemáticos para a Computação", 5, 40),
         (2, "Cidadania, Ética e Espiritualidade", 1, 40),
         (2, "Fundamentos Matemáticos para a Computação", 4, 40),
-        (3, "Cidadania, Ética e Espiritualidade", 9, 40),            # 22,5% -> alerta de atenção
-        (3, "Fundamentos Matemáticos para a Computação", 13, 40),    # acima de 25% -> reprovado por falta
+        (3, "Cidadania, Ética e Espiritualidade", 9, 40),
+        (3, "Fundamentos Matemáticos para a Computação", 13, 40),
     ])
 
     print("Banco criado e populado com os dados de exemplo.")

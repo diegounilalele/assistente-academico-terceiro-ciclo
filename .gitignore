@@ -1,6 +1,8 @@
 .env
 *.db
+*.claude
 *lauch.json
 .vscode/
 __pycache__/
 *.pyc
+*.sqbpro
