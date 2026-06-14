@@ -32,18 +32,3 @@ Este é um projeto desenvolvido por 7 pessoas que tem um viés servir alunos de 
 
 Para expor na internet, defina `USAR_NGROK=true` e o `ngrok_token` no `.env`
 (nesse modo o debug do Flask é desligado automaticamente, por segurança).
-
-## Como levar os dados do banco para outro computador
-
-O arquivo `universidade.db` não vai pro git (está no `.gitignore`). Para as
-alterações feitas numa máquina (senhas trocadas, notas editadas, provas/eventos,
-conversas...) aparecerem em outra:
-
-1. Na máquina onde os dados estão atualizados, rode `python exportar_dados.py`.
-   Isso gera o `dados_exportados.json` com tudo que está no banco.
-2. Commite e dê push do `dados_exportados.json`.
-3. Na outra máquina, dê `git pull` e rode `python criar_banco.py`.
-   - Se o banco de lá ainda não existir (ou estiver vazio), ele é criado já com
-     os dados reais do JSON em vez dos dados de exemplo.
-   - Se o banco de lá já tiver dados, nada é sobrescrito (para aplicar o JSON,
-     apague/renomeie o `universidade.db` local antes de rodar o script).
