@@ -1,8 +1,13 @@
+# Segredos e configuração local
 .env
-*.db
-*.claude
-*lauch.json
+.claude/
 .vscode/
+
+# Banco de dados
+*.db
+*.sqbpro
+*.json
+
+# Arquivos gerados pelo Python
 __pycache__/
 *.pyc
-*.sqbpro

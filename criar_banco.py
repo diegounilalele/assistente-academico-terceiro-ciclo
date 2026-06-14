@@ -1,6 +1,10 @@
 import sqlite3
 import random  # gerar notas/faltas variadas dos alunos extras
+import json  # ler o dados_exportados.json (dados reais salvos em outra máquina)
+import os  # verificar se o arquivo de exportação existe
 from werkzeug.security import generate_password_hash  # transforma a senha em hash (vem junto do Flask)
+
+ARQUIVO_DADOS = "dados_exportados.json"  # gerado pelo exportar_dados.py; se existir, vence os dados de exemplo
 
 conn = sqlite3.connect("universidade.db")
 cursor = conn.cursor()
@@ -69,6 +73,25 @@ cursor.executescript("""
         atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS observacoes (
+        aluno_id INTEGER PRIMARY KEY,
+        texto TEXT,
+        atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS config (
+        chave TEXT PRIMARY KEY,
+        valor TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS anotacoes (
+        usuario_id INTEGER PRIMARY KEY,
+        dados TEXT,
+        atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    );
 """)
 
 # Só popula com os dados de exemplo se o banco estiver VAZIO (primeira vez).
@@ -77,6 +100,39 @@ ja_tem_dados = cursor.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0] > 0
 
 if ja_tem_dados:
     print("Banco já existe — dados preservados (nada foi recriado).")
+elif os.path.exists(ARQUIVO_DADOS):
+    # Banco vazio + dados_exportados.json presente: aplica os dados REAIS salvos
+    # em outra máquina (senhas alteradas, notas editadas, provas/eventos, histórico...)
+    # em vez dos dados de exemplo lá de baixo.
+    with open(ARQUIVO_DADOS, "r", encoding="utf-8") as arquivo:
+        dados_salvos = json.load(arquivo)
+
+    # A ordem respeita as chaves estrangeiras: alunos antes de usuarios/notas etc.
+    ordem = ["alunos", "usuarios", "notas", "faltas", "provas",
+             "observacoes", "config", "anotacoes", "historico_chat", "conversas_salvas"]
+    # Tabelas do arquivo que não estão na lista entram no final (nada se perde)
+    ordem += [t for t in dados_salvos if t not in ordem]
+
+    # Tabelas que realmente existem neste banco (evita erro se o arquivo tiver tabela desconhecida)
+    tabelas_existentes = {linha[0] for linha in cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table'"
+    )}
+
+    total_importado = 0
+    for tabela in ordem:
+        linhas = dados_salvos.get(tabela) or []
+        if not linhas:
+            continue
+        if tabela not in tabelas_existentes:
+            print(f"Aviso: tabela '{tabela}' do arquivo não existe no banco — pulada.")
+            continue
+        colunas = list(linhas[0].keys())
+        sql = (f"INSERT INTO {tabela} ({', '.join(colunas)}) "
+               f"VALUES ({', '.join('?' for _ in colunas)})")
+        cursor.executemany(sql, [[linha.get(c) for c in colunas] for linha in linhas])
+        total_importado += len(linhas)
+
+    print(f"Banco criado com {total_importado} registros reais vindos de {ARQUIVO_DADOS}.")
 else:
     # Aluno precisa existir antes do usuário que aponta para ele (chave estrangeira)
     cursor.execute("INSERT OR IGNORE INTO alunos VALUES (1, 'André')")
@@ -116,8 +172,8 @@ else:
     cursor.executemany("INSERT OR IGNORE INTO provas (aluno_id, materia, data, conteudo) VALUES (?,?,?,?)", [
         # Dia 09/06/2026: prova ÚNICA cobrindo todas as matérias (uma só, não uma por matéria)
         (1, "Todas as matérias", "2026-06-09", "Prova única cobrindo as 5 matérias: Engenharia de Dados (modelagem de dados, SQL e ETL); Engenharia de Soluções (lógica de programação em Python); Fundamentos da Computação e Infraestrutura (arquitetura de computadores, sistemas operacionais e redes); Cidadania, Ética e Espiritualidade; e Fundamentos Matemáticos para a Computação."),
-        # Apresentação do projeto no dia seguinte: 10/06/2026
-        (1, "Projeto Integrador", "2026-06-10", "Apresentação final do projeto"),
+        # Apresentação do projeto: 15/06/2026 (as férias começam no dia 16)
+        (1, "Projeto Integrador", "2026-06-15", "Apresentação final do projeto"),
     ])
 
     # Diego (2) e Tiago (3): mesmas matérias do André (colunas iguais), mas notas/faltas próprias (linhas diferentes)

@@ -14,8 +14,8 @@
       --surface2: #1a212e;
       --border: #2a3344;
       --accent: #b8893a;
-      --accent2: #e0bd6e; 
-      --text: #d8dde6; 
+      --accent2: #e0bd6e;
+      --text: #d8dde6;
       --text-muted: #6b7686;
       --rune: #6aa7cf;
       --user-bubble: #141a24;
@@ -71,7 +71,7 @@
     .sidebar-logo .logo-icon {
       width: 34px; height: 34px;
       border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      background: var(--accent);
       display: flex; align-items: center; justify-content: center;
       font-size: 16px; flex-shrink: 0;
     }
@@ -90,17 +90,17 @@
       gap: 8px;
       margin: 0 12px 16px;
       padding: 10px 12px;
-      border: none;
+      border: 1px solid var(--accent);
       border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: #1a120a;
+      background: transparent;
+      color: var(--accent2);
       font-family: 'DM Sans', sans-serif;
       font-size: 13.5px;
       font-weight: 500;
       cursor: pointer;
-      transition: opacity 0.2s, transform 0.15s;
+      transition: background 0.2s, transform 0.15s;
     }
-    .btn-nova-conversa:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-nova-conversa:hover { background: rgba(184,137,58,0.12); transform: translateY(-1px); }
     .btn-nova-conversa svg { width: 16px; height: 16px; }
 
     .sidebar-section {
@@ -186,10 +186,31 @@
     }
 
     .history-item span {
+      flex: 1;
+      min-width: 0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
+    /* Botão de apagar uma única conversa (aparece ao passar o mouse no item) */
+    .history-del {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      padding: 3px;
+      margin: 0 -2px 0 0;
+      cursor: pointer;
+      color: var(--text-muted);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s, background 0.15s;
+    }
+    .history-item:hover .history-del { opacity: 1; }
+    .history-del:hover { color: #f87171; background: rgba(248,113,113,0.14); }
+    .history-del svg { width: 14px; height: 14px; opacity: 1; }
 
     .history-empty {
       padding: 6px 10px;
@@ -371,10 +392,10 @@
     .progress-bar-fill {
       height: 100%;
       border-radius: 3px;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      background: var(--accent);
       transition: width 0.6s ease;
     }
-    .progress-bar-fill.bad { background: linear-gradient(90deg, #f87171, #ef4444); }
+    .progress-bar-fill.bad { background: #f87171; }
 
     /* ── CALENDAR ── */
     .calendar-grid {
@@ -391,8 +412,9 @@
       letter-spacing: 0.06em;
     }
     .cal-day {
-      height: 36px;
+      height: 46px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       border-radius: 8px;
@@ -402,11 +424,23 @@
       transition: background 0.15s, color 0.15s;
       position: relative;
     }
+    /* Nome curto da matéria do dia, embaixo do número */
+    .cal-day .cal-materia {
+      font-size: 8px;
+      line-height: 1;
+      margin-top: 3px;
+      max-width: 100%;
+      padding: 0 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      opacity: 0.85;
+    }
     .cal-day:hover { background: var(--surface2); color: var(--text); }
     .cal-day.aula { background: rgba(106,167,207,0.12); color: var(--text); }
     .cal-day.ferias { background: rgba(184,137,58,0.13); color: var(--accent2); }
     .cal-day.today {
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      background: var(--accent);
       color: white;
       font-weight: 500;
     }
@@ -430,7 +464,7 @@
     .cal-legend .leg-dot.aula { background: rgba(106,167,207,0.55); }
     .cal-legend .leg-dot.ferias { background: rgba(184,137,58,0.6); }
     .cal-legend .leg-dot.evento { background: rgba(248,113,113,0.85); box-shadow: inset 0 0 0 2px rgba(248,113,113,0.75); }
-    .cal-legend .leg-dot.hoje { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+    .cal-legend .leg-dot.hoje { background: var(--accent); }
     .cal-detalhe { margin-top: 14px; font-size: 13px; color: var(--text); min-height: 18px; }
     .cal-wrap {
       background: var(--surface);
@@ -606,7 +640,7 @@
       gap: 8px;
     }
     .btn-save {
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      background: var(--accent);
       border: none;
       color: white;
       border-radius: 8px;
@@ -706,7 +740,7 @@
     }
     .toggle input:checked + .toggle-track::after { left: 21px; }
     .btn-config-save {
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      background: var(--accent);
       border: none;
       color: white;
       border-radius: 10px;
@@ -717,6 +751,20 @@
       transition: opacity 0.2s;
     }
     .btn-config-save:hover { opacity: 0.85; }
+    .btn-danger {
+      background: transparent;
+      border: 1px solid rgba(248,113,113,0.4);
+      color: #f87171;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 13.5px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-danger:hover { background: rgba(248,113,113,0.12); border-color: #f87171; }
 
     /* ── HOME VIEW ── */
     .home-view {
@@ -737,6 +785,16 @@
       color: var(--text);
       text-align: center;
     }
+    /* "Selo" acima do título da home */
+    .home-eyebrow {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 14px;
+    }
 
     .home-input-wrap {
       width: 100%;
@@ -752,7 +810,7 @@
       gap: 10px;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 50px;
+      border-radius: 12px;
       padding: 10px 14px 10px 20px;
       transition: border-color 0.2s;
     }
@@ -777,8 +835,8 @@
 
     .home-input-bar .send-btn {
       width: 36px; height: 36px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      background: var(--accent);
       border: none;
       color: white;
       cursor: pointer;
@@ -802,7 +860,7 @@
       align-items: center;
       gap: 7px;
       padding: 9px 18px;
-      border-radius: 50px;
+      border-radius: 8px;
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--text-muted);
@@ -851,18 +909,33 @@
       flex-shrink: 0; display: flex;
       align-items: center; justify-content: center; font-size: 14px;
     }
-    .avatar.ai { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
-    .avatar.user { background: var(--surface2); border: 1px solid var(--border); font-size: 15px; }
+    /* Emblema do Mímir: "M" em Cinzel com contorno dourado (no lugar do círculo gradiente "IA") */
+    .avatar.ai {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent2);
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      border-radius: 8px;
+    }
+    /* A mensagem do usuário já fica alinhada à direita; o avatar "EU" era redundante */
+    .msg.user .avatar { display: none; }
 
     .bubble {
-      max-width: 72%; padding: 12px 16px; border-radius: 16px;
+      max-width: 72%; padding: 12px 16px; border-radius: 10px;
       font-size: 14.5px; line-height: 1.65; font-weight: 400;
       white-space: pre-wrap;
     }
 
+    /* Resposta do Mímir: texto aberto com filete dourado na margem (estilo manuscrito),
+       em vez da bolha de chat com "rabinho" */
     .msg.ai .bubble {
-      background: var(--ai-bubble); border: 1px solid var(--border);
-      border-top-left-radius: 4px; color: var(--text);
+      background: transparent; border: none;
+      border-left: 2px solid var(--accent);
+      border-radius: 0;
+      padding: 4px 0 4px 16px;
+      max-width: 78%;
+      color: var(--text);
       text-align: justify;   /* respostas da IA com texto justificado */
       hyphens: auto;         /* quebra palavras p/ evitar buracos no justificado (usa lang="pt-BR") */
     }
@@ -885,8 +958,8 @@
 
     .msg.user .bubble {
       background: var(--user-bubble);
-      border: 1px solid rgba(30,31,33,0.8);
-      border-top-right-radius: 4px; color: var(--text);
+      border: 1px solid var(--border);
+      color: var(--text);
     }
 
     .chat-input-area {
@@ -901,7 +974,7 @@
       gap: 10px;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 50px;
+      border-radius: 12px;
       padding: 10px 14px 10px 20px;
       transition: border-color 0.2s;
     }
@@ -926,8 +999,8 @@
 
     .chat-input-bar .send-btn {
       width: 36px; height: 36px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      background: var(--accent);
       border: none;
       color: white;
       cursor: pointer;
@@ -988,7 +1061,7 @@
     .login-logo {
       width: 52px; height: 52px;
       border-radius: 14px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      background: var(--accent);
       display: flex; align-items: center; justify-content: center;
       margin: 0 auto 4px;
     }
@@ -1037,7 +1110,7 @@
     }
 
     .login-btn {
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      background: var(--accent);
       border: none;
       color: white;
       border-radius: 10px;
@@ -1066,7 +1139,7 @@
       position: absolute;
       top: 0; left: 50%; transform: translateX(-50%);
       width: 130px; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      background: var(--accent);
     }
 
     /* Divisória com runa de Tyr (Tiwaz) */
@@ -1080,10 +1153,10 @@
     }
     .rune-divider span {
       height: 1px; width: 56px;
-      background: linear-gradient(90deg, transparent, var(--accent));
+      background: var(--accent);
     }
     .rune-divider span:last-child {
-      background: linear-gradient(90deg, var(--accent), transparent);
+      background: var(--accent);
     }
     .rune-divider svg { width: 15px; height: 15px; }
 
@@ -1098,7 +1171,7 @@
       display: block;
       width: 72px; height: 2px;
       margin: 14px auto 0;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      background: var(--accent);
       border-radius: 2px;
     }
     .page-header h2 { position: relative; }
@@ -1107,7 +1180,7 @@
       display: block;
       width: 48px; height: 2px;
       margin-top: 10px;
-      background: linear-gradient(90deg, var(--accent), transparent);
+      background: var(--accent);
       border-radius: 2px;
     }
 
@@ -1242,12 +1315,12 @@
 
   <!-- ── ASSISTENTE (HOME + CHAT) ── -->
   <div class="home-view visible" id="home-view">
-    <h1 class="home-title">Qual a dúvida de hoje?</h1>
+    <h1 class="home-title"><span class="home-eyebrow">Mímir · O guardião do conhecimento</span>Qual a dúvida de hoje?</h1>
     <div class="home-input-wrap">
       <div class="home-input-bar">
         <textarea
           id="home-input"
-          placeholder="Pergunte alguma coisa..."
+          placeholder="Escreva sua pergunta..."
           rows="1"
           onkeydown="handleHomeKey(event)"
           oninput="autoResize(this)"
@@ -1280,7 +1353,7 @@
           </svg>
         </button>
       </div>
-      <p class="footer-note">Respostas podem conter erros — sempre revise</p>
+      <p class="footer-note">Nem mesmo Mímir sabe de tudo — confira as informações importantes</p>
     </div>
   </div>
 
@@ -1325,7 +1398,7 @@
       <div class="stat-card"><div class="card-label">Aula</div><div class="card-value" style="font-size:22px;">19h–22h</div><div class="card-sub">Segunda a sexta</div></div>
       <div class="stat-card"><div class="card-label">APS</div><div class="card-value" style="font-size:22px;">19h–19h30</div><div class="card-sub">Abre 19h · fecha 19h30</div></div>
       <div class="stat-card"><div class="card-label">Hands On</div><div class="card-value" style="font-size:22px;">21h–22h40</div><div class="card-sub">Abre 21h · fecha 22h40</div></div>
-      <div class="stat-card"><div class="card-label">Férias</div><div class="card-value" style="font-size:22px;">11/jun</div><div class="card-sub">Retorno 03/ago (1º dia útil)</div></div>
+      <div class="stat-card"><div class="card-label">Férias</div><div class="card-value" style="font-size:22px;">16/jun</div><div class="card-sub">Retorno 03/ago (1º dia útil)</div></div>
     </div>
 
     <div class="page-header" style="margin-bottom:16px;">
@@ -1420,6 +1493,17 @@
       </div>
     </div>
     <button class="btn-config-save" id="btn-salvar-config" onclick="salvarConfiguracoes()">Salvar alterações</button>
+
+    <div class="config-section" style="margin-top:20px;">
+      <div class="config-section-title">Histórico de conversas</div>
+      <div class="config-row">
+        <div>
+          <div class="config-row-label">Apagar histórico</div>
+          <div class="config-row-sub">Remove todas as conversas salvas e a memória do assistente. Não pode ser desfeito.</div>
+        </div>
+        <button class="btn-danger" onclick="apagarHistorico()">Apagar histórico</button>
+      </div>
+    </div>
   </div>
 
   <!-- ── PAINEL DO PROFESSOR ── -->
@@ -1529,7 +1613,11 @@
     document.body.classList.remove('deslogado');
     const ehProfessor = !!(sessao && sessao.tipo === 'professor');
     if (sessao && sessao.username) {
-      document.getElementById('display-name').textContent = sessao.username;
+      // O nome de exibição escolhido pelo usuário tem prioridade sobre o login
+      nomeExibicao = (sessao.nome_exibicao || '').trim();
+      document.getElementById('display-name').textContent = nomeExibicao || sessao.username;
+      const cfgNome = document.getElementById('cfg-nome');
+      if (cfgNome) cfgNome.value = nomeExibicao;
       document.getElementById('user-role-label').textContent =
         ehProfessor ? 'Professor' : 'Estudante';
     }
@@ -1555,7 +1643,7 @@
     try {
       const res = await fetch('/sessao');
       const data = await res.json();
-      if (data.logado) entrarNoApp({ username: data.username, tipo: data.tipo });
+      if (data.logado) entrarNoApp({ username: data.username, tipo: data.tipo, nome_exibicao: data.nome_exibicao });
     } catch (e) {
       // Flask offline: permanece na tela de login
     }
@@ -1565,6 +1653,7 @@
   async function fazerLogout() {
     try { await fetch('/logout', { method: 'POST' }); } catch (e) {}
     dadosAluno = null;
+    nomeExibicao = '';
     // Limpa a conversa e o histórico da TELA, para o próximo usuário que logar
     // neste navegador não ver as conversas do usuário anterior.
     historico = [];
@@ -1581,7 +1670,9 @@
 
   // ── DADOS DO BANCO ──
   let dadosAluno = null;
+  let nomeExibicao = '';                           // nome escolhido pelo usuário (salvo no banco; vazio = usa o nome do cadastro)
   let dadosProfessor = null;                       // cache do /todos_alunos (p/ filtro/busca/CSV sem refetch)
+  let eventosProf = [];                            // eventos agendados (provas/apresentações) p/ o professor editar
   let filtroProf = { busca: '', soRisco: false };  // estado do filtro do painel do professor
   let notaCorte = 6.0;                             // nota mínima de aprovação (vem do backend)
   let totalAulasPadrao = 40;                       // total de aulas padrão ao lançar falta (vem do backend)
@@ -1603,10 +1694,11 @@
     if (dadosAluno.nota_corte) notaCorte = dadosAluno.nota_corte;  // mantém cores/situação do aluno em sintonia com o corte
     // Mostra o NOME do aluno (vindo do aluno_id, não da matrícula usada no login)
     // no campo de configurações e no canto inferior esquerdo da barra lateral.
+    // Sem nome de exibição salvo, cai no nome do cadastro do aluno
     const cfgNome = document.getElementById('cfg-nome');
-    if (cfgNome) cfgNome.value = dadosAluno.nome;
+    if (cfgNome) cfgNome.value = nomeExibicao || dadosAluno.nome;
     const displayName = document.getElementById('display-name');
-    if (displayName) displayName.textContent = dadosAluno.nome;
+    if (displayName) displayName.textContent = nomeExibicao || dadosAluno.nome;
 
     renderInicio();
     renderDesempenho();
@@ -1632,9 +1724,9 @@
   }
 
   function corBarra(media) {
-    if (media >= notaCorte) return 'linear-gradient(90deg,var(--accent),var(--accent2))';
-    if (media >= notaCorte - 2) return 'linear-gradient(90deg,#fbbf24,#f59e0b)';
-    return 'linear-gradient(90deg,#f87171,#ef4444)';
+    if (media >= notaCorte) return 'var(--accent)';
+    if (media >= notaCorte - 2) return '#f59e0b';
+    return '#f87171';
   }
 
   function renderInicio() {
@@ -1781,7 +1873,7 @@
       const maxFaltas = Math.floor(f.total * limite);
       const usadas = Math.min(f.faltas / maxFaltas, 1) * 100;
       const restantes = Math.max(maxFaltas - f.faltas, 0);
-      const cor = f.faltas > maxFaltas ? 'linear-gradient(90deg,#f87171,#ef4444)' : 'linear-gradient(90deg,var(--accent),var(--accent2))';
+      const cor = f.faltas > maxFaltas ? '#f87171' : 'var(--accent)';
       return `
         <div>
           <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-bottom:4px;">
@@ -1861,6 +1953,7 @@
       dadosProfessor = json;                              // guarda p/ filtro/busca/CSV sem refetch
       if (json.nota_corte) notaCorte = json.nota_corte;   // mantém cores/situação em sintonia
       if (json.total_aulas_padrao) totalAulasPadrao = json.total_aulas_padrao;
+      eventosProf = json.eventos || [];
       const alunos = json.alunos;
 
       // Opções reaproveitadas pelos vários formulários
@@ -1901,7 +1994,7 @@
             <div style="${campo};margin-top:8px;"><label style="${lbl}">Matéria</label><input id="prova-materia" class="config-input" list="materias-prof" placeholder="Ex: Todas as matérias"></div>
             <div style="${campo};margin-top:8px;"><label style="${lbl}">Data</label><input id="prova-data" class="config-input" type="date"></div>
             <div style="${campo};margin-top:8px;"><label style="${lbl}">Conteúdo</label><input id="prova-conteudo" class="config-input" placeholder="Agendamento..."></div>
-            <button class="btn-config-save" style="margin-top:12px;" onclick="ConcluirAgendamento()">Concluir Agendamento</button>
+            <button class="btn-config-save" style="margin-top:12px;" onclick="agendarProva()">Concluir Agendamento</button>
             <div id="prova-feedback" style="${fbS}"></div>
           </div>
 
@@ -1932,6 +2025,29 @@
 
         </div>`;
 
+      // Eventos que já existem (provas/apresentações): o professor edita a data
+      // e o conteúdo direto na linha, ou remove o evento da turma toda.
+      const linhasEventos = eventosProf.map((ev, i) => `<tr>
+          <td>${htmlEsc(ev.materia)}</td>
+          <td><input type="date" id="ev-data-${i}" class="config-input" value="${htmlEsc(ev.data)}" style="min-width:150px;"></td>
+          <td><input id="ev-conteudo-${i}" class="config-input" value="${htmlEsc(ev.conteudo || '')}" placeholder="Conteúdo" style="width:100%;min-width:220px;"></td>
+          <td>${ev.alunos}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn-config-save" style="padding:6px 14px;font-size:12px;" onclick="salvarEvento(${i})">Salvar</button>
+            <button class="btn-delete-nota" style="padding:6px 14px;font-size:12px;margin-left:6px;" onclick="removerEvento(${i})">Remover</button>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="5" style="color:var(--text-muted);">Nenhum evento agendado.</td></tr>';
+
+      const eventosSec = `
+        <div class="table-wrap" style="margin-bottom:16px;">
+          <div class="table-title">Eventos já agendados (editar / remover)</div>
+          <table class="data-table">
+            <thead><tr><th>Evento / Matéria</th><th>Data</th><th>Conteúdo</th><th>Alunos</th><th>Ações</th></tr></thead>
+            <tbody>${linhasEventos}</tbody>
+          </table>
+          <div id="evento-feedback" style="font-size:12.5px;min-height:16px;padding:6px 18px 12px;"></div>
+        </div>`;
+
       const controles = `
         <div class="table-wrap" style="padding:14px 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px;">
           <input id="prof-busca" class="config-input" placeholder="Buscar aluno..." style="flex:1;min-width:160px;" oninput="filtrarProf()" value="${filtroProf.busca}">
@@ -1949,7 +2065,7 @@
           <div class="stat-card"><div class="card-label">Alunos em Risco</div><div class="card-value" style="color:${r.alunos_em_risco ? '#f87171' : 'var(--text)'}">${r.alunos_em_risco}</div><div class="card-sub">precisam de atenção</div></div>
         </div>`;
 
-      cont.innerHTML = acoes + controles + resumoCards + `<div id="prof-lista"></div>`;
+      cont.innerHTML = acoes + eventosSec + controles + resumoCards + `<div id="prof-lista"></div>`;
       renderListaProf();
     } catch (e) {
       cont.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Erro ao conectar com o servidor. Verifique se o Flask está rodando.</p>';
@@ -2079,6 +2195,23 @@
     await acaoProf('/cadastrar_prova', { aluno_id, materia, data, conteudo }, 'prova-feedback', err);
   }
 
+  // Salva a nova data/conteúdo de um evento que já existe (vale p/ todos os alunos que o têm)
+  async function salvarEvento(i) {
+    const ev = eventosProf[i];
+    if (!ev) return;
+    const data = document.getElementById('ev-data-' + i).value;
+    const conteudo = document.getElementById('ev-conteudo-' + i).value.trim();
+    const err = !data ? 'Escolha a nova data do evento.' : '';
+    await acaoProf('/editar_evento', { materia: ev.materia, data_original: ev.data, data, conteudo }, 'evento-feedback', err);
+  }
+
+  async function removerEvento(i) {
+    const ev = eventosProf[i];
+    if (!ev) return;
+    if (!confirm('Remover o evento "' + ev.materia + '" (' + ev.data + ') de ' + ev.alunos + ' aluno(s)?')) return;
+    await acaoProf('/apagar_evento', { materia: ev.materia, data_original: ev.data }, 'evento-feedback', '');
+  }
+
   async function cadastrarAluno() {
     const nome = document.getElementById('novo-nome').value.trim();
     const username = document.getElementById('novo-user').value.trim();
@@ -2188,9 +2321,26 @@
   let eventosPorDia = {};
 
   // Rotina acadêmica: aulas de segunda a sexta, 19h–22h (com APS e Hands On).
-  // Férias de 11/jun/2026 até o 1º dia útil de agosto (retorno em 03/ago/2026).
-  const FERIAS_INICIO  = new Date(2026, 5, 11);  // 11/jun/2026 (mês 5 = junho)
+  // Férias de 16/jun/2026 até o 1º dia útil de agosto (retorno em 03/ago/2026).
+  const FERIAS_INICIO  = new Date(2026, 5, 16);  // 16/jun/2026 (mês 5 = junho)
   const FERIAS_RETORNO = new Date(2026, 7, 3);   // 03/ago/2026 = 1º dia útil de agosto
+
+  // Matéria de cada dia da semana (índice de getDay(): 1=Seg ... 5=Sex).
+  const AULA_POR_DIA = {
+    1: 'Engenharia de Dados',
+    2: 'Engenharia de Soluções',
+    3: 'Fundamentos Matemáticos para a Computação',
+    4: 'Cidadania, Ética e Espiritualidade',
+    5: 'Fundamentos da Computação e Infraestrutura',
+  };
+  // Versão curta para caber dentro do quadradinho do calendário.
+  const AULA_CURTA_POR_DIA = {
+    1: 'Eng. Dados',
+    2: 'Eng. Soluções',
+    3: 'Matemática',
+    4: 'Ética/Cidadania',
+    5: 'Infraestrutura',
+  };
 
   function chaveData(dt) {
     return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
@@ -2199,7 +2349,7 @@
     return eventosPorDia[chaveData(dt)] || [];
   }
   function ehFerias(dt) {
-    return dt >= FERIAS_INICIO && dt < FERIAS_RETORNO;  // 11/jun .. 02/ago
+    return dt >= FERIAS_INICIO && dt < FERIAS_RETORNO;  // 16/jun .. 02/ago
   }
   function ehDiaDeAula(dt) {
     const dow = dt.getDay();                 // 0=Dom ... 6=Sáb
@@ -2227,14 +2377,16 @@
       const aula = ehDiaDeAula(dt);
       const titulo = temEvento ? eventos.map(e => e.titulo).join(' · ') + ' (sem aula)'
                    : ferias ? 'Férias — sem aula'
-                   : aula  ? 'Aula 19h–22h · APS 19h–19h30 · Hands On 21h–22h40'
+                   : aula  ? `${AULA_POR_DIA[dt.getDay()]} · Aula 19h–22h · APS 19h–19h30 · Hands On 21h–22h40`
                    : 'Sem aula';
       let classes = 'cal-day';
       if (temEvento) classes += ' evento';
       else if (ferias) classes += ' ferias';
       else if (aula) classes += ' aula';
       if (isToday) classes += ' today';
-      html += `<div class="${classes}" title="${titulo}" onclick="mostrarDetalheDia(${calDate.getFullYear()}, ${calDate.getMonth()}, ${d})">${d}</div>`;
+      // Em dia de aula, mostra o nome curto da matéria embaixo do número
+      const rotulo = aula ? `<span class="cal-materia">${AULA_CURTA_POR_DIA[dt.getDay()]}</span>` : '';
+      html += `<div class="${classes}" title="${titulo}" onclick="mostrarDetalheDia(${calDate.getFullYear()}, ${calDate.getMonth()}, ${d})">${d}${rotulo}</div>`;
     }
     grid.innerHTML = html;
   }
@@ -2259,7 +2411,7 @@
     } else if (ehFerias(dt)) {
       linhas = ['Férias — sem aula.'];
     } else if (ehDiaDeAula(dt)) {
-      linhas = ['Aula 19h–22h · APS 19h–19h30 · Hands On 21h–22h40.'];
+      linhas = [`Aula de ${AULA_POR_DIA[dt.getDay()]}.`, 'Horário: 19h–22h · APS 19h–19h30 · Hands On 21h–22h40.'];
     } else {
       linhas = ['Fim de semana — sem aula.'];
     }
@@ -2351,14 +2503,31 @@
   }
 
   // ── CONFIGURAÇÕES ──
-  function salvarConfiguracoes() {
+  // Salva o nome de exibição NO BANCO via /salvar_nome
+  // (antes só trocava o texto na tela — qualquer F5 desfazia a mudança)
+  async function salvarConfiguracoes() {
     const nome = document.getElementById('cfg-nome').value.trim();
-    if (nome) document.getElementById('display-name').textContent = nome;
     const btn = document.getElementById('btn-salvar-config');
     const orig = btn.textContent;
-    btn.textContent = 'Salvo!';
-    btn.style.opacity = '0.7';
-    setTimeout(() => { btn.textContent = orig; btn.style.opacity = ''; }, 1800);
+    const feedback = (msg) => {
+      btn.textContent = msg;
+      btn.style.opacity = '0.7';
+      setTimeout(() => { btn.textContent = orig; btn.style.opacity = ''; btn.disabled = false; }, 1800);
+    };
+    if (!nome) return feedback('Digite um nome');
+    btn.disabled = true;
+    try {
+      const res = await chamarFlask('/salvar_nome', { nome });
+      if (res.status === 'sucesso') {
+        nomeExibicao = res.nome_exibicao || nome;
+        document.getElementById('display-name').textContent = nomeExibicao;
+        feedback('Salvo!');
+      } else {
+        feedback(res.mensagem || 'Não foi possível salvar');
+      }
+    } catch (e) {
+      feedback('Erro ao conectar');
+    }
   }
 
   // Troca a senha do próprio usuário logado (valida no front e confirma no back).
@@ -2436,6 +2605,11 @@
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
         <span>${conv.titulo}</span>
+        <button class="history-del" onclick="apagarConversa(${i}, event)" title="Apagar esta conversa">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
       </div>
     `).join('');
   }
@@ -2454,12 +2628,45 @@
     mostrarChat();
   }
 
+  // Apaga UMA conversa da barra lateral. Fica na lixeira de cada item (não nas configurações).
+  async function apagarConversa(index, event) {
+    if (event) event.stopPropagation();   // o clique na lixeira não deve abrir a conversa
+    const conv = historico[index];
+    if (!conv) return;
+    if (!confirm('Apagar a conversa "' + conv.titulo + '"? Essa ação não pode ser desfeita.')) return;
+
+    const eraAtual = (conv === conversaAtual);
+    historico.splice(index, 1);           // tira da lista
+
+    // Se a conversa apagada era a que está aberta, limpa a tela e a memória da IA.
+    if (eraAtual) {
+      conversaAtual = null;
+      messagesEl.innerHTML = '';
+      try { await fetch('/resetar', { method: 'POST' }); } catch (e) {}
+      showView('assistente');
+    }
+    renderHistorico();
+    salvarConversas();                    // persiste a lista já sem a conversa apagada
+  }
+
+  // Apaga TODO o histórico (conversas + memória da IA). Acionado pelo botão das Configurações.
+  async function apagarHistorico() {
+    if (!confirm('Apagar TODO o histórico? Isso remove todas as conversas salvas e a memória do assistente. Essa ação não pode ser desfeita.')) return;
+
+    historico = [];
+    conversaAtual = null;
+    messagesEl.innerHTML = '';
+    renderHistorico();
+    try { await fetch('/apagar_historico', { method: 'POST' }); } catch (e) {}
+    showView('assistente');               // volta para a home do assistente
+  }
+
   function addMessageSilent(role, content) {
     const div = document.createElement('div');
     div.className = `msg ${role}`;
     const avatar = document.createElement('div');
     avatar.className = `avatar ${role}`;
-    avatar.textContent = role === 'ai' ? 'IA' : 'EU';
+    avatar.textContent = role === 'ai' ? 'M' : 'EU'; // "M" = emblema do Mímir (o avatar do usuário fica oculto via CSS)
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.textContent = content;
@@ -2474,7 +2681,7 @@
     div.className = `msg ${role}`;
     const avatar = document.createElement('div');
     avatar.className = `avatar ${role}`;
-    avatar.textContent = role === 'ai' ? 'IA' : 'EU';
+    avatar.textContent = role === 'ai' ? 'M' : 'EU'; // "M" = emblema do Mímir (o avatar do usuário fica oculto via CSS)
     const bubble = document.createElement('div');
     bubble.className = 'bubble' + (extraClass ? ' ' + extraClass : '');
     bubble.textContent = content;

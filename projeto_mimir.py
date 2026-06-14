@@ -14,8 +14,8 @@ import time # esperar o ngrok liberar o domínio entre as tentativas
 load_dotenv() # carrega as variáveis do .env
 
 
-OLLAMA_URL = os.getenv("ollama_url") # URL do Ollama (local por padrão)
-OLLAMA_MODEL = os.getenv("ollama_model") # modelo do Ollama
+OLLAMA_URL = os.getenv("ollama_url") # URL do Ollama (padrão: instalação local)
+OLLAMA_MODEL = os.getenv("ollama_model") # modelo do Ollama (precisa estar no .env)
 NGROK_TOKEN  = os.getenv("ngrok_token", "") # token do ngrok (opcional)
 NGROK_API_KEY = os.getenv("ngrok_api_key", "") # chave da API do ngrok (opcional) p/ derrubar sessões presas
 CAMINHO_BANCO = "universidade.db" # nome do arquivo do banco em um só lugar
@@ -30,7 +30,7 @@ servidor.secret_key = os.getenv("SEGREDOSEGREDO", "bologna") # chave que assina 
 def conectar_db():
     conexao = sqlite3.connect(CAMINHO_BANCO)
     conexao.row_factory = sqlite3.Row # permite acessar colunas pelo nome: linha["nome"]
-    conexao.execute("PRAGMA foreign_keys = ON;")  # liga o ON DELETE CASCADE
+    conexao.execute("PRAGMA foreign_keys = ON;")  # liga o ON DELETE CASCADE, caso algo seja apagado, apaga notas/faltas/provas/observações vinculadas a esse algo
     try:
         yield conexao
         conexao.commit() # se chegou aqui sem erro, grava as alterações
@@ -38,7 +38,7 @@ def conectar_db():
         conexao.close() # fecha a conexão de qualquer jeito
 
 
-def login_obrigatorio(rota):
+def login_obrigatorio(rota): # decorator para proteger rotas que precisam de login (verifica se tem "usuario_tipo" na sessão)
     @wraps(rota)
     def protecao(*args, **kwargs):
         if not session.get("usuario_tipo"):
@@ -47,7 +47,7 @@ def login_obrigatorio(rota):
     return protecao
 
 
-def apenas_professor(rota):
+def apenas_professor(rota): # decorator para proteger rotas que só professores podem acessar (verifica se "usuario_tipo" é "professor")
     @wraps(rota)
     def protecao(*args, **kwargs):
         if session.get("usuario_tipo") != "professor":
@@ -56,23 +56,23 @@ def apenas_professor(rota):
     return protecao
 
 
-def buscar_dados_aluno(id_aluno):
+def buscar_dados_aluno(id_aluno): # busca no banco os dados de um aluno específico (notas, faltas, provas, observação) e calcula médias, situação de faltas e o que falta para passar
     with conectar_db() as conexao:
-        cursor = conexao.cursor()
+        cursor = conexao.cursor() # cria um cursor para executar as consultas
 
-        cursor.execute("SELECT nome FROM alunos WHERE id = ?", (id_aluno,))
-        aluno = cursor.fetchone()
+        cursor.execute("SELECT nome FROM alunos WHERE id = ?", (id_aluno,)) # busca o nome do aluno (pode ser usado para mostrar na tela e também é parte do contexto que a IA conhece sobre o usuário)
+        aluno = cursor.fetchone() # fetchone() porque esperamos só um resultado (id é único); se fosse possível ter vários, usaríamos fetchall() e iterar sobre eles
         if not aluno:
             return None  # o "with" fecha a conexão sozinho
 
         cursor.execute("SELECT id, materia, nota FROM notas WHERE aluno_id = ? ORDER BY materia, id", (id_aluno,))
-        notas = cursor.fetchall()
+        notas = cursor.fetchall() # fetchall() porque um aluno pode ter várias notas (várias avaliações) para cada matéria, vamos agrupar depois no Python para calcular a média e mostrar as notas individuais
 
         cursor.execute("SELECT materia, faltas, total_aulas FROM faltas WHERE aluno_id = ?", (id_aluno,))
-        registros_faltas = cursor.fetchall()
+        registros_faltas = cursor.fetchall() # fetchall() porque um aluno pode ter registros de faltas para várias matérias, cada registro tem a matéria, quantas faltas e o total de aulas (para calcular o percentual)
 
-        cursor.execute("SELECT materia, data, conteudo FROM provas WHERE aluno_id = ?", (id_aluno,))
-        provas = cursor.fetchall()
+        cursor.execute("SELECT materia, data, conteudo FROM provas WHERE aluno_id = ?", (id_aluno,)) # busca as provas agendadas para este aluno, com matéria, data e conteúdo (pode ser usado para mostrar na tela e também é parte do contexto que a IA conhece sobre o usuário)
+        provas = cursor.fetchall() # fetchall() porque um aluno pode ter várias provas agendadas, cada uma com matéria, data e conteúdo
 
         cursor.execute("SELECT texto FROM observacoes WHERE aluno_id = ?", (id_aluno,))
         registro_obs = cursor.fetchone()
@@ -170,8 +170,10 @@ def inicializar_banco():
             conexao.execute("ALTER TABLE conversas_salvas ADD COLUMN aluno_id INTEGER")
 
         # Migração: coluna 'nome_exibicao' em usuarios (nome que o usuário escolhe mostrar).
+        # Se a tabela usuarios ainda não existe (banco novo, antes do criar_banco.py),
+        # a lista vem vazia e não há o que migrar — sem isso o ALTER TABLE quebraria.
         colunas_usuarios = [c["name"] for c in conexao.execute("PRAGMA table_info(usuarios)").fetchall()]
-        if "nome_exibicao" not in colunas_usuarios:
+        if colunas_usuarios and "nome_exibicao" not in colunas_usuarios:
             conexao.execute("ALTER TABLE usuarios ADD COLUMN nome_exibicao TEXT")
 
         # Recado/observação que o professor deixa para um aluno (um por aluno).
@@ -202,14 +204,12 @@ def inicializar_banco():
 
 
 def get_config(chave, padrao=None):
-    """Lê uma configuração da tabela config; devolve `padrao` se não existir."""
     with conectar_db() as conexao:
         linha = conexao.execute("SELECT valor FROM config WHERE chave = ?", (chave,)).fetchone()
     return linha["valor"] if linha else padrao
 
 
 def set_config(chave, valor):
-    """Grava (ou atualiza) uma configuração na tabela config."""
     with conectar_db() as conexao:
         conexao.execute(
             "INSERT INTO config (chave, valor) VALUES (?, ?) "
@@ -219,7 +219,6 @@ def set_config(chave, valor):
 
 
 def nota_corte():
-    """Nota mínima para aprovação (configurável pelo professor; padrão 6.0)."""
     try:
         return float(get_config("nota_corte", 6.0))
     except (TypeError, ValueError):
@@ -240,7 +239,6 @@ def historico_do(id_usuario):
 
 
 def salvar_mensagem(id_usuario, role, conteudo):
-    """Grava uma mensagem (do usuário ou da IA) no histórico do banco."""
     if not id_usuario:
         return
     with conectar_db() as conexao:
@@ -288,6 +286,23 @@ def texto_dados_aluno(dados):
     return "\n".join(linhas)
 
 
+def chamar_ollama(mensagens, timeout=300):
+    # Ponto único de acesso ao Ollama (o chat e o título de conversa passam por aqui).
+    # Devolve o texto da resposta; deixa as exceções de rede subirem para quem chamou tratar.
+    resposta = requests.post(
+        f"{OLLAMA_URL}/api/chat",
+        json={
+            "model": OLLAMA_MODEL,
+            "messages": mensagens,
+            "stream": False,
+            "keep_alive": "30m",  # mantém o modelo na RAM por 30 min (evita recarregar a cada pergunta)
+        },
+        timeout=timeout,
+    )
+    resposta.raise_for_status()
+    return (resposta.json().get("message", {}).get("content") or "").strip()
+
+
 def condicionais(pergunta, id_usuario, id_aluno, eh_professor=False):
     if not pergunta or not pergunta.strip():
         return {"tipo": "resposta", "texto": "Por favor, digite uma pergunta."}
@@ -325,9 +340,9 @@ INFORMAÇÕES SOBRE O USUÁRIO LOGADO (use para responder sobre nome, notas, mé
 FIM DAS INFORMAÇÕES 
 
 Regras sobre os dados pessoais:
-- Quando perguntarem sobre o próprio nome, notas, médias, faltas, provas ou o que falta para passar, responda usando EXATAMENTE as informações acima.
-- Não invente nada que não esteja nas informações acima. Se não estiver lá, diga que não tem essa informação.
-- Você só conhece os dados deste usuário. Não tem acesso aos dados de outros alunos.
+Quando perguntarem sobre o próprio nome, notas, médias, faltas, provas ou o que falta para passar, responda usando EXATAMENTE as informações acima.
+Não invente nada que não esteja nas informações acima. Se não estiver lá, diga que não tem essa informação.
+Você só conhece os dados deste usuário. Não tem acesso aos dados de outros alunos.
 
 Você também domina todos os assuntos de tecnologia, incluindo:
 Programação (Python, JavaScript, C, Java, SQL, e qualquer outra linguagem)
@@ -348,21 +363,17 @@ Caso não for um json válido, responda:
 {{"tipo": "resposta", "texto": "Desculpe, não consigo responder essa pergunta."}}
 """
     try:
-        resposta = requests.post(
-            f"{OLLAMA_URL}/api/chat",
-            json={
-                "model": OLLAMA_MODEL,
-                "messages": [
-                    {"role": "system", "content": sabio}, # instruções do assistente
-                    *mensagens # histórico anterior + pergunta atual
-                ],
-                "stream": False,
-                "keep_alive": "30m"  # mantém o modelo na RAM por 30 min (evita recarregar a cada pergunta)
-            },
-            timeout=300  # CPU + modelo grande podem demorar; tempo generoso pra não cortar a resposta
+        # timeout generoso: CPU + modelo grande podem demorar, e não queremos cortar a resposta
+        texto = chamar_ollama(
+            [
+                {"role": "system", "content": sabio}, # instruções do assistente
+                *mensagens # histórico anterior + pergunta atual
+            ],
+            timeout=300,
         )
-        resposta.raise_for_status()
-        texto = resposta.json()["message"]["content"].strip()
+        if not texto:
+            # resposta vazia costuma ser sessão expirada de modelo cloud no Ollama
+            return {"tipo": "resposta", "texto": "O modelo retornou uma resposta vazia. Reinicie o Ollama e tente novamente."}
         texto = re.sub(r"```json|```", "", texto).strip() # tira blocos de código caso o modelo use
         resultado = json.loads(texto)
 
@@ -394,7 +405,7 @@ def login():
         return jsonify({"status": "erro", "mensagem": "Informe usuário e senha."}), 400
 
     with conectar_db() as conexao:
-        cursor = conexao.cursor()
+        cursor = conexao.cursor() # cria um cursor para executar a consulta
         cursor.execute(
             "SELECT id, senha, tipo, aluno_id, nome_exibicao FROM usuarios WHERE username = ?",
             (username,)
@@ -427,7 +438,6 @@ def logout():
 
 @servidor.route("/sessao", methods=["GET"])
 def sessao():
-    """O front-end usa para saber, ao abrir a página, se o usuário já está logado."""
     if session.get("usuario_tipo"):
         return jsonify({
             "logado": True,
@@ -441,7 +451,6 @@ def sessao():
 @servidor.route("/salvar_nome", methods=["POST"])
 @login_obrigatorio
 def salvar_nome():
-    """Salva o nome de exibição do usuário logado (mostrado no canto da barra lateral)."""
     dados = request.get_json() or {}
     nome = (dados.get("nome") or "").strip()
     with conectar_db() as conexao:
@@ -453,7 +462,6 @@ def salvar_nome():
 @servidor.route("/dados_aluno", methods=["GET"])
 @login_obrigatorio
 def dados_aluno_route():
-    """Entrega ao HTML todos os dados já calculados do aluno logado."""
     id_aluno = session.get("aluno_id")  # professor não tem aluno vinculado -> None
     if id_aluno is None:
         return jsonify({"status": "erro", "mensagem": "Sua conta não está vinculada a um aluno."}), 400
@@ -504,18 +512,7 @@ def titulo_conversa():
         f"{conversa}"
     )
     try:
-        resposta = requests.post(
-            f"{OLLAMA_URL}/api/chat",
-            json={
-                "model": OLLAMA_MODEL,
-                "messages": [{"role": "user", "content": prompt}],
-                "stream": False,
-                "keep_alive": "30m",
-            },
-            timeout=120,
-        )
-        resposta.raise_for_status()
-        titulo = (resposta.json().get("message", {}).get("content") or "").strip()
+        titulo = chamar_ollama([{"role": "user", "content": prompt}], timeout=120)
         titulo = titulo.splitlines()[0] if titulo else ""           # só a 1ª linha
         titulo = re.sub(r'^[\s"\'`#*\-]+|[\s"\'`]+$', "", titulo)    # tira aspas/markdown das pontas
         return jsonify({"status": "sucesso", "titulo": titulo[:60]})
@@ -538,8 +535,6 @@ def obter_conversas():
 @servidor.route("/conversas", methods=["POST"])
 @login_obrigatorio
 def salvar_conversas():
-    """Salva (substitui) a lista de conversas do usuário logado. Chamado pelo front
-    a cada mensagem nova / conversa arquivada, então nada se perde ao fechar o servidor."""
     dados = request.get_json() or {}
     conversas = dados.get("conversas", [])
     with conectar_db() as conexao:
@@ -568,8 +563,6 @@ def obter_anotacoes():
 @servidor.route("/anotacoes", methods=["POST"])
 @login_obrigatorio
 def salvar_anotacoes():
-    """Salva (substitui) as anotações do usuário logado, em JSON. Chamado a cada
-    alteração no bloco de notas, então nada se perde ao fechar o servidor."""
     dados = request.get_json() or {}
     anotacoes = dados.get("anotacoes", [])
     with conectar_db() as conexao:
@@ -593,6 +586,10 @@ def cadastrar_nota():
 
     if not id_aluno or not materia or nota is None:
         return jsonify({"status": "erro", "mensagem": "Dados incompletos."}), 400
+    try:
+        nota = float(nota) # se vier como texto do front, converte (em vez de estourar erro 500 na comparação)
+    except (TypeError, ValueError):
+        return jsonify({"status": "erro", "mensagem": "Nota inválida."}), 400
     if nota < 0 or nota > 10:
         return jsonify({"status": "erro", "mensagem": "A nota deve estar entre 0 e 10."}), 400
 
@@ -607,7 +604,6 @@ def cadastrar_nota():
 @servidor.route("/todos_alunos", methods=["GET"])
 @apenas_professor
 def todos_alunos():
-    """Painel do professor: devolve todos os alunos já com média geral, frequência e situação calculadas."""
     corte = nota_corte()
     with conectar_db() as conexao:
         cursor = conexao.cursor()
@@ -654,7 +650,18 @@ def todos_alunos():
         "alunos_em_risco": sum(1 for a in alunos if a["em_risco"]),
     }
 
-    return jsonify({"status": "sucesso", "alunos": alunos, "resumo": resumo, "nota_corte": corte, "total_aulas_padrao": TOTAL_AULAS_PADRAO})
+    # Eventos agendados (provas/apresentações) agrupados por matéria+data:
+    # o professor vê e edita/remove cada um na tela (qtd = quantos alunos têm o evento)
+    with conectar_db() as conexao:
+        eventos = [
+            {"materia": e["materia"], "data": e["data"], "conteudo": e["conteudo"], "alunos": e["qtd"]}
+            for e in conexao.execute(
+                "SELECT materia, data, conteudo, COUNT(*) AS qtd FROM provas "
+                "GROUP BY materia, data, conteudo ORDER BY data, materia"
+            ).fetchall()
+        ]
+
+    return jsonify({"status": "sucesso", "alunos": alunos, "resumo": resumo, "eventos": eventos, "nota_corte": corte, "total_aulas_padrao": TOTAL_AULAS_PADRAO})
 
 
 @servidor.route("/cadastrar_falta", methods=["POST"])
@@ -668,6 +675,11 @@ def cadastrar_falta():
 
     if not id_aluno or not materia or faltas is None:
         return jsonify({"status": "erro", "mensagem": "Preencha aluno, matéria e faltas."}), 400
+    try:
+        faltas = int(faltas) # se vierem como texto do front, converte (em vez de estourar erro 500 na comparação)
+        total = int(total)
+    except (TypeError, ValueError):
+        return jsonify({"status": "erro", "mensagem": "Faltas e total de aulas devem ser números."}), 400
     if total <= 0 or faltas < 0 or faltas > total:
         return jsonify({"status": "erro", "mensagem": f"Faltas devem estar entre 0 e {total}."}), 400
 
@@ -707,18 +719,67 @@ def cadastrar_prova():
 
     if not alvo or not materia or not data:
         return jsonify({"status": "erro", "mensagem": "Preencha aluno, matéria e data."}), 400
+    if alvo != "turma":
+        try:
+            alvo = int(alvo) # valida antes de abrir o banco (id inválido virava erro 500)
+        except (TypeError, ValueError):
+            return jsonify({"status": "erro", "mensagem": "Aluno inválido."}), 400
 
     with conectar_db() as conexao:
         if alvo == "turma":
             ids = [r["id"] for r in conexao.execute("SELECT id FROM alunos").fetchall()]
         else:
-            ids = [int(alvo)]
+            ids = [alvo]
         for aid in ids:
             conexao.execute(
                 "INSERT OR REPLACE INTO provas (aluno_id, materia, data, conteudo) VALUES (?, ?, ?, ?)",
                 (aid, materia, data, conteudo)
             )
     return jsonify({"status": "sucesso", "mensagem": f"Prova agendada para {len(ids)} aluno(s)!"})
+
+
+@servidor.route("/editar_evento", methods=["POST"])
+@apenas_professor
+def editar_evento():
+    # Muda a data/conteúdo de um evento que já existe, para TODOS os alunos que o têm.
+    # A dupla (materia, data_original) identifica o evento na lista da tela do professor.
+    dados = request.get_json() or {}
+    materia = (dados.get("materia") or "").strip()
+    data_original = (dados.get("data_original") or "").strip()
+    data = (dados.get("data") or "").strip()
+    conteudo = (dados.get("conteudo") or "").strip()
+
+    if not materia or not data_original or not data:
+        return jsonify({"status": "erro", "mensagem": "Informe o evento e a nova data."}), 400
+
+    with conectar_db() as conexao:
+        cur = conexao.execute(
+            "UPDATE provas SET data = ?, conteudo = ? WHERE materia = ? AND data = ?",
+            (data, conteudo, materia, data_original)
+        )
+    if cur.rowcount == 0:
+        return jsonify({"status": "erro", "mensagem": "Evento não encontrado."}), 404
+    return jsonify({"status": "sucesso", "mensagem": f"Evento atualizado para {cur.rowcount} aluno(s)!"})
+
+
+@servidor.route("/apagar_evento", methods=["POST"])
+@apenas_professor
+def apagar_evento():
+    dados = request.get_json() or {}
+    materia = (dados.get("materia") or "").strip()
+    data_original = (dados.get("data_original") or "").strip()
+
+    if not materia or not data_original:
+        return jsonify({"status": "erro", "mensagem": "Informe o evento."}), 400
+
+    with conectar_db() as conexao:
+        cur = conexao.execute(
+            "DELETE FROM provas WHERE materia = ? AND data = ?",
+            (materia, data_original)
+        )
+    if cur.rowcount == 0:
+        return jsonify({"status": "erro", "mensagem": "Evento não encontrado."}), 404
+    return jsonify({"status": "sucesso", "mensagem": f"Evento removido de {cur.rowcount} aluno(s)!"})
 
 
 @servidor.route("/editar_nota", methods=["POST"])
@@ -730,6 +791,10 @@ def editar_nota():
 
     if not nota_id or nova is None:
         return jsonify({"status": "erro", "mensagem": "Dados incompletos."}), 400
+    try:
+        nova = float(nova) # se vier como texto do front, converte (em vez de estourar erro 500 na comparação)
+    except (TypeError, ValueError):
+        return jsonify({"status": "erro", "mensagem": "Nota inválida."}), 400
     if nova < 0 or nova > 10:
         return jsonify({"status": "erro", "mensagem": "A nota deve estar entre 0 e 10."}), 400
 
@@ -803,7 +868,6 @@ def resetar_senha():
 @servidor.route("/mudar_senha", methods=["POST"])
 @login_obrigatorio
 def mudar_senha():
-    """O próprio usuário logado troca a sua senha (confere a senha atual antes)."""
     dados = request.get_json() or {}
     atual = dados.get("senha_atual") or ""
     nova = dados.get("senha_nova") or ""
@@ -876,8 +940,6 @@ def liberar_sessoes_ngrok(api_key):
 
 
 def conectar_ngrok(tentativas=4, espera=3):
-    """Abre o túnel do ngrok com algumas tentativas: depois de encerrar a sessão antiga,
-    o ngrok leva alguns segundos para liberar o domínio."""
     ultimo_erro = None
     for tentativa in range(tentativas):
         try:
@@ -895,6 +957,9 @@ inicializar_banco()  # garante a tabela do histórico (roda tanto ao executar qu
 if __name__ == "__main__": # Verifica se este arquivo está sendo executado diretamente (python projeto_mimir.py) ou importado por outro (import projeto_mimir)
     usar_ngrok = os.getenv("USAR_NGROK", "false").lower() == "true"
 
+    if not OLLAMA_MODEL:
+        print("\nAviso: 'ollama_model' não está definido no .env — as perguntas à IA vão falhar.\n")
+
     if usar_ngrok:
         if NGROK_TOKEN:
             ngrok.set_auth_token(NGROK_TOKEN)
@@ -909,4 +974,6 @@ if __name__ == "__main__": # Verifica se este arquivo está sendo executado dire
     else:
         print("\nServidor local: http://localhost:5000\n")
 
-    servidor.run(debug=True, use_reloader=False)
+    # debug desligado quando exposto na internet: o debugger do werkzeug
+    # permite executar código no servidor a partir da página de erro
+    servidor.run(debug=not usar_ngrok, use_reloader=False)
